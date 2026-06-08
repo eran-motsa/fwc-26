@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{{ date_local }} · Mundial 26 Agent{% endblock %}
+{% block nav_today %}active{% endblock %}
+
+{% block content %}
+<div class="daynav">
+  <a class="arrow {{ 'disabled' if not prev_d }}" href="{{ '/day/' ~ prev_d if prev_d else '#' }}">‹</a>
+  <div class="date">{{ date_local }}</div>
+  <a class="arrow {{ 'disabled' if not next_d }}" href="{{ '/day/' ~ next_d if next_d else '#' }}">›</a>
+</div>
+
+<div class="wrap">
+
+  {% if not has_snapshot %}
+  <div class="notice">
+    This day hasn't been processed yet. The matches below are accessible placeholders —
+    model probabilities, bookmaker consensus and recommended bets fill in automatically
+    when the 16:00 / 16:30 jobs run on {{ date_local }}.
+  </div>
+  {% endif %}
+
+  {% if tournament and tournament.winner %}
+  <div class="tpanel">
+    <div class="tcard">
+      <h3>Winner — Trophy Probability</h3>
+      <ol>
+        {% for t in tournament.winner %}
+        <li><span>{{ loop.index }}. {{ t.team }}</span><span class="pct">{{ (t.prob*100)|round(1) }}%</span></li>
+        {% endfor %}
+      </ol>
+    </div>
+    <div class="tcard">
+      <h3>Golden Boot — Contenders</h3>
+      <ol>
+        {% for p in tournament.golden_boot %}
+        <li><span>{{ loop.index }}. {{ p.player }}</span><span class="pct">{{ p.team }}</span></li>
+        {% else %}
+        <li><span class="pct">Fills in once squads & lineups are published.</span></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not matches %}
+    <div class="notice">No matches scheduled on this date.</div>
+  {% endif %}
+
+  {% for m in matches %}
+  <div class="match {{ 'placeholder' if not m.model }}">
+    <div class="match-head">
+      <div class="teams">{{ m.home }} <span style="color:var(--muted)">vs</span> {{ m.away }}</div>
+      <div class="meta">
+        {% if m.stage %}<span class="stage">{{ m.stage }}</span><br>{% endif %}
+        {{ m.kickoff_local or '' }} {% if m.venue %}· {{ m.venue }}{% endif %}<br>
+        {% if m.status == 'FT' and m.home_goals is not none %}
+          <span class="score-final">{{ m.home_goals }}–{{ m.away_goals }} FT</span>
+        {% else %}{{ m.status or 'Scheduled' }}{% endif %}
+      </div>
+    </div>
+
+    <div class="match-body">
+      <div class="cell">
+        <h4>Model</h4>
+        {% if m.model %}
+        <div class="probrow">
+          {% set v = m.value or {} %}
+          <div class="prob {{ 'edge-pos' if v.home and v.home>0.03 }}">
+            <div class="lbl">1</div><div class="val">{{ (m.model.p_home*100)|round }}%</div></div>
+          <div class="prob {{ 'edge-pos' if v.draw and v.draw>0.03 }}">
+            <div class="lbl">X</div><div class="val">{{ (m.model.p_draw*100)|round }}%</div></div>
+          <div class="prob {{ 'edge-pos' if v.away and v.away>0.03 }}">
+            <div class="lbl">2</div><div class="val">{{ (m.model.p_away*100)|round }}%</div></div>
+        </div>
+        <div class="kv"><span>Expected goals</span><b>{{ m.model.exp_home_goals }} – {{ m.model.exp_away_goals }}</b></div>
+        <div class="kv"><span>Most likely score</span><b>{{ m.model.top_scoreline }}</b></div>
+        <div class="kv"><span>Over 2.5</span><b>{{ (m.model.over25*100)|round }}%</b></div>
+        <div class="kv"><span>Both teams score</span><b>{{ (m.model.btts*100)|round }}%</b></div>
+        {% else %}
+        <div class="kv"><span>Awaiting daily computation</span></div>
+        {% endif %}
+      </div>
+
+      <div class="cell">
+        <h4>Bookmaker Consensus</h4>
+        {% if m.consensus %}
+        <div class="probrow">
+          <div class="prob"><div class="lbl">1</div><div class="val">{{ (m.consensus.cp_home*100)|round }}%</div></div>
+          <div class="prob"><div class="lbl">X</div><div class="val">{{ (m.consensus.cp_draw*100)|round }}%</div></div>
+          <div class="prob"><div class="lbl">2</div><div class="val">{{ (m.consensus.cp_away*100)|round }}%</div></div>
+        </div>
+        <div class="kv"><span>Fair odds (1 / X / 2)</span><b>{{ m.consensus.fair_home }} / {{ m.consensus.fair_draw }} / {{ m.consensus.fair_away }}</b></div>
+        <div class="kv"><span>Books in consensus</span><b>{{ m.consensus.n_books }}</b></div>
+        {% else %}
+        <div class="kv"><span>Odds load on match day</span></div>
+        {% endif %}
+        <div class="kv"><span>Form (home / away)</span>
+          <b><span class="form">{% for c in m.form_home %}<span class="{{c}}">{{c}}</span>{% endfor %}</span>
+             / <span class="form">{% for c in m.form_away %}<span class="{{c}}">{{c}}</span>{% endfor %}</span></b></div>
+        {% if m.injuries %}
+        <div class="injuries">Out: {% for i in m.injuries %}<span>{{ i.player }}</span>{{ ", " if not loop.last }}{% endfor %}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if m.recommended_bet %}
+    {% set rb = m.recommended_bet %}
+    <div class="rec">
+      <h4>Recommended Bet (maximises league points)</h4>
+      <div class="pick">{{ rb.best.scoreline }}
+        <span class="ep">→ {{ rb.best.expected_points }} expected pts
+        (bonus {{ rb.stage_bonus }}, dir odds {{ rb.best.direction_odds }})</span></div>
+      <table>
+        <tr><th>Score</th><th>Dir</th><th>P(exact)</th><th>Dir odds</th><th>Exp pts</th></tr>
+        {% for r in rb.top5 %}
+        <tr><td>{{ r.scoreline }}</td><td>{{ r.direction }}</td>
+          <td>{{ (r.p_exact*100)|round(1) }}%</td><td>{{ r.direction_odds }}</td>
+          <td>{{ r.expected_points }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- Add bet -->
+    <form class="betform" method="post" action="/bets">
+      <input type="hidden" name="date_local" value="{{ date_local }}">
+      <input type="hidden" name="fixture_id" value="{{ m.fixture_id }}">
+      {% if m.recommended_bet %}
+      <input type="hidden" name="odds_taken" value="{{ m.recommended_bet.best.direction_odds }}">
+      <input type="hidden" name="stage_bonus" value="{{ m.recommended_bet.stage_bonus }}">
+      {% endif %}
+      <span>My bet:</span>
+      <input type="number" name="predicted_home" min="0" max="9" value="{{ m.recommended_bet.best.h if m.recommended_bet else 1 }}">
+      <span class="sep">–</span>
+      <input type="number" name="predicted_away" min="0" max="9" value="{{ m.recommended_bet.best.a if m.recommended_bet else 0 }}">
+      <input type="text" name="notes" placeholder="notes (optional)">
+      <button class="btn" type="submit">Add bet</button>
+    </form>
+
+    {% set mb = bets | selectattr('fixture_id', 'equalto', m.fixture_id) | list %}
+    {% if mb %}
+    <div class="mybets">
+      {% for b in mb %}
+      <div class="bet">
+        <b>{{ b.selection }}</b>
+        <span class="tag {{ b.result }}">{{ b.result.replace('_',' ') }}</span>
+        {% if b.points_awarded is not none %}<span>{{ b.points_awarded }} pts</span>{% endif %}
+        {% if b.notes %}<span style="color:var(--muted)">{{ b.notes }}</span>{% endif %}
+        <form method="post" action="/bets/{{ b.id }}/delete" style="margin-left:auto">
+          <input type="hidden" name="date_local" value="{{ date_local }}">
+          <button class="btn btn-ghost" type="submit">remove</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

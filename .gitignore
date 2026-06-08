@@ -1,0 +1,21 @@
+# env & secrets
+.env
+
+# database & logs
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.log
+data/*.err
+
+# ide / tooling
+.claude/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.uv/
+*.egg-info/
+dist/
+build/

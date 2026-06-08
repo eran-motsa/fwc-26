@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}History · Mundial 26 Agent{% endblock %}
+{% block nav_history %}active{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="tcard" style="margin-bottom:26px">
+    <h3>Running Total</h3>
+    <div class="pointsbig">{{ total_points }} pts</div>
+    <div style="color:var(--muted);font-size:13px">Settled bets only · first 3 places win the tournament pot</div>
+  </div>
+
+  <h3 style="color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;font-size:13px;margin-bottom:6px">My Bets</h3>
+  <table class="history">
+    <tr><th>Date</th><th>Pick</th><th>Result</th><th>Points</th><th>Notes</th></tr>
+    {% for b in bets %}
+    <tr>
+      <td><a href="/day/{{ b.date_local }}">{{ b.date_local }}</a></td>
+      <td>{{ b.selection }}</td>
+      <td><span class="tag {{ b.result }}">{{ b.result.replace('_',' ') }}</span></td>
+      <td>{{ b.points_awarded if b.points_awarded is not none else '—' }}</td>
+      <td style="color:var(--muted)">{{ b.notes }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" style="color:var(--muted)">No bets yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  <h3 style="color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;font-size:13px;margin:30px 0 6px">Daily Snapshots</h3>
+  <table class="history">
+    <tr><th>Date</th><th>Generated</th><th></th></tr>
+    {% for d in days %}
+    <tr>
+      <td>{{ d.date_local }}</td>
+      <td style="color:var(--muted)">{{ d.generated_at }}</td>
+      <td><a href="/day/{{ d.date_local }}">view →</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3" style="color:var(--muted)">No snapshots saved yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

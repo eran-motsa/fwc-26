@@ -1,0 +1,208 @@
+:root {
+  --black: #0a0a0c;
+  --panel: #141418;
+  --panel-2: #1c1c22;
+  --line: #2a2a33;
+  --gold: #d4af37;
+  --gold-bright: #f0cd5a;
+  --white: #f5f5f2;
+  --muted: #9a9aa5;
+  --can: #e4002b;   /* host accent: Canada red */
+  --mex: #00843d;   /* host accent: Mexico green */
+  --usa: #1a4fa0;   /* host accent: USA blue */
+  --win: #3fb950;
+  --lose: #f85149;
+  --font-display: "Archivo", "Arial Narrow", sans-serif;
+  --font-body: "Noto Sans", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgba(212,175,55,0.10), transparent 60%),
+    var(--black);
+  color: var(--white);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a { color: var(--gold-bright); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Header / branding ─────────────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; gap: 18px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(212,175,55,0.06), transparent);
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand .emblem { width: 46px; height: 46px; }
+.brand h1 {
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 20px; letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.brand h1 span { color: var(--gold); }
+.brand .tagline {
+  font-size: 11px; color: var(--muted); letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.nav { margin-left: auto; display: flex; gap: 22px; align-items: center; }
+.nav a { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.nav a.active, .nav a:hover { color: var(--gold-bright); text-decoration: none; }
+
+/* ── Day navigation ────────────────────────────────────────────── */
+.daynav {
+  display: flex; align-items: center; justify-content: center; gap: 24px;
+  padding: 20px; border-bottom: 1px solid var(--line);
+}
+.daynav .date {
+  font-family: var(--font-display); font-size: 26px; font-weight: 700;
+  letter-spacing: 1px;
+}
+.daynav .arrow {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  border: 1px solid var(--line); border-radius: 50%; color: var(--white);
+  font-size: 18px;
+}
+.daynav .arrow:hover { border-color: var(--gold); color: var(--gold); text-decoration: none; }
+.daynav .arrow.disabled { opacity: .25; pointer-events: none; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px; }
+
+.notice {
+  background: var(--panel); border: 1px dashed var(--line);
+  border-radius: 12px; padding: 14px 18px; color: var(--muted);
+  font-size: 13px; margin-bottom: 22px;
+}
+
+/* ── Tournament panel ──────────────────────────────────────────── */
+.tpanel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 30px; }
+.tcard {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px 20px;
+}
+.tcard h3 {
+  font-family: var(--font-display); text-transform: uppercase; letter-spacing: 1.5px;
+  font-size: 13px; color: var(--gold); margin-bottom: 12px;
+}
+.tcard ol { list-style: none; counter-reset: r; }
+.tcard li {
+  display: flex; justify-content: space-between; padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 14px;
+}
+.tcard li .pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ── Match cards ───────────────────────────────────────────────── */
+.match {
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line); border-radius: 16px;
+  padding: 0; margin-bottom: 20px; overflow: hidden;
+}
+.match.placeholder { opacity: .82; }
+.match-head {
+  display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(90deg, rgba(212,175,55,0.05), transparent);
+}
+.match-head .teams {
+  font-family: var(--font-display); font-size: 19px; font-weight: 700;
+  letter-spacing: .5px; flex: 1;
+}
+.match-head .meta { text-align: right; font-size: 12px; color: var(--muted); }
+.match-head .stage {
+  display: inline-block; font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--black); background: var(--gold);
+  padding: 2px 8px; border-radius: 20px; font-weight: 700;
+}
+.score-final {
+  font-family: var(--font-display); font-size: 20px; color: var(--gold-bright);
+  font-weight: 800;
+}
+
+.match-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.cell { padding: 16px 20px; }
+.cell + .cell { border-left: 1px solid var(--line); }
+.cell h4 {
+  font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px;
+}
+
+.probrow { display: flex; gap: 8px; margin-bottom: 8px; }
+.prob {
+  flex: 1; text-align: center; background: var(--black);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 4px;
+}
+.prob .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+.prob .val { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+.prob.edge-pos { border-color: var(--win); }
+.prob.edge-pos .val { color: var(--win); }
+
+.kv { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; color: var(--muted); }
+.kv b { color: var(--white); font-variant-numeric: tabular-nums; }
+
+.form { font-family: var(--font-display); letter-spacing: 2px; }
+.form .W { color: var(--win); } .form .L { color: var(--lose); } .form .D { color: var(--muted); }
+
+.injuries { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.injuries span { color: var(--lose); }
+
+/* ── Recommended bet + form ────────────────────────────────────── */
+.rec {
+  margin: 0 20px 18px; background: rgba(212,175,55,0.07);
+  border: 1px solid var(--gold); border-radius: 12px; padding: 14px 18px;
+}
+.rec h4 { color: var(--gold); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+.rec .pick {
+  font-family: var(--font-display); font-size: 24px; font-weight: 800;
+  color: var(--gold-bright);
+}
+.rec .ep { font-size: 13px; color: var(--muted); }
+.rec table { width: 100%; margin-top: 10px; font-size: 12px; border-collapse: collapse; }
+.rec th, .rec td { text-align: left; padding: 3px 6px; color: var(--muted); }
+.rec th { text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+.rec tr td:first-child { color: var(--white); font-family: var(--font-display); }
+
+.betform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 20px 18px; }
+.betform input[type=number] {
+  width: 54px; background: var(--black); border: 1px solid var(--line);
+  color: var(--white); border-radius: 8px; padding: 8px; text-align: center;
+  font-family: var(--font-display); font-size: 16px;
+}
+.betform input[type=text] {
+  flex: 1; min-width: 140px; background: var(--black); border: 1px solid var(--line);
+  color: var(--white); border-radius: 8px; padding: 8px 12px;
+}
+.betform .sep { color: var(--muted); }
+.btn {
+  background: var(--gold); color: var(--black); border: none; cursor: pointer;
+  font-family: var(--font-display); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; font-size: 12px; padding: 9px 18px; border-radius: 8px;
+}
+.btn:hover { background: var(--gold-bright); }
+.btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+
+.mybets { margin: 0 20px 18px; }
+.mybets .bet {
+  display: flex; align-items: center; gap: 12px; font-size: 13px;
+  padding: 8px 0; border-top: 1px solid var(--line);
+}
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; }
+.tag.pending { background: var(--panel-2); color: var(--muted); }
+.tag.won_exact { background: var(--gold); color: var(--black); }
+.tag.won_direction { background: var(--mex); color: var(--white); }
+.tag.lost { background: var(--lose); color: var(--white); }
+
+/* ── History ───────────────────────────────────────────────────── */
+table.history { width: 100%; border-collapse: collapse; margin-top: 16px; }
+table.history th, table.history td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); font-size: 14px; }
+table.history th { color: var(--gold); text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+.pointsbig { font-family: var(--font-display); font-size: 40px; color: var(--gold-bright); font-weight: 800; }
+
+@media (max-width: 720px) {
+  .match-body, .tpanel { grid-template-columns: 1fr; }
+  .cell + .cell { border-left: none; border-top: 1px solid var(--line); }
+}

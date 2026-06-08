@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Mundial 2026 Agent{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <!-- Original trophy-in-26 emblem (inspired by, not a copy of, the official mark) -->
+      <svg class="emblem" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f0cd5a"/><stop offset="1" stop-color="#d4af37"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="2" width="60" height="60" rx="12" stroke="url(#g)" stroke-width="2"/>
+        <!-- stylised trophy -->
+        <path d="M26 14h12v6c0 5-2.5 8-6 8s-6-3-6-8v-6z" fill="url(#g)"/>
+        <path d="M22 16c-4 0-5 4-2 6m22-6c4 0 5 4 2 6" stroke="url(#g)" stroke-width="2"/>
+        <rect x="29" y="29" width="6" height="6" fill="url(#g)"/>
+        <rect x="24" y="36" width="16" height="3" rx="1.5" fill="url(#g)"/>
+        <!-- 26 -->
+        <text x="32" y="56" text-anchor="middle" font-family="Archivo" font-weight="800"
+              font-size="12" fill="#f0cd5a" letter-spacing="1">26</text>
+      </svg>
+      <div>
+        <h1>Mundial <span>26</span> Agent</h1>
+        <div class="tagline">We Are 26 · Betting Advisor</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="/" class="{% block nav_today %}{% endblock %}">Today</a>
+      <a href="/history" class="{% block nav_history %}{% endblock %}">History</a>
+      <a href="/settings" class="{% block nav_settings %}{% endblock %}">Settings</a>
+    </nav>
+  </header>
+  {% block content %}{% endblock %}
+</body>
+</html>

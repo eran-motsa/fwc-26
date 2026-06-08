@@ -1,0 +1,22 @@
+[project]
+name = "mundial-agent"
+version = "1.0.0"
+description = "Local World Cup 2026 betting-advisor agent: ingests data, models matches, optimizes bets for a custom scoring system, serves a local UI."
+requires-python = ">=3.14"
+dependencies = [
+    "httpx>=0.27",
+    "numpy>=2.1",
+    "scipy>=1.14",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "python-dotenv>=1.0",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

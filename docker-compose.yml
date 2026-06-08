@@ -1,0 +1,12 @@
+# Optional. The scheduled jobs (11:00/16:00/16:30) use macOS launchd, not Docker,
+# because they need host scheduling. This compose file runs just the UI if you
+# prefer a container for it. Recommended path is native (bash scripts/setup.sh).
+services:
+  ui:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
