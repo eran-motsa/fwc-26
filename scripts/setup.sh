@@ -46,6 +46,7 @@ uv run python -m db.init_db
 
 # 6. Verify API connectivity (first real call — no empty data) ────────────────
 echo "▶ Testing API connectivity…"
+uv run python -m ingestion.fd_client
 uv run python -m ingestion.client
 uv run python -m ingestion.odds_client
 

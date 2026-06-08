@@ -28,6 +28,12 @@ def main() -> None:
     schema = (ROOT / "db" / "schema.sql").read_text(encoding="utf-8")
     conn = get_db()
     conn.executescript(schema)
+    # Migrate existing DB: add apif_fixture_id column if it doesn't exist yet.
+    try:
+        conn.execute("ALTER TABLE fixtures ADD COLUMN apif_fixture_id INTEGER")
+        conn.commit()
+    except Exception:
+        pass  # column already exists
     for stage, (bonus, mult) in SCORING_RULES.items():
         conn.execute(
             "INSERT INTO scoring_rules(stage, exact_bonus, odds_multiplier) "

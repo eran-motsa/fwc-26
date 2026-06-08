@@ -1,24 +1,30 @@
-"""16:00 Asia/Jerusalem job: pull today's data (fixtures, injuries, lineups, odds)."""
+"""16:00 Asia/Jerusalem job: pull today's data (fixtures, lineups, odds).
+
+Data sources:
+  fixtures  — football-data.org (free, covers WC 2026)
+  lineups   — API-Football free (date feed → fixture IDs → lineups per match)
+  injuries  — no free source; skipped
+  odds      — The Odds API (free tier)
+"""
 from __future__ import annotations
 
 import sys
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import TZ_LOCAL, require_keys  # noqa: E402
-from ingestion import fixtures, injuries, odds  # noqa: E402
+from ingestion import apif_bridge, fixtures, injuries, odds  # noqa: E402
 
 
 def main() -> None:
     require_keys()
-    today = datetime.now(ZoneInfo(TZ_LOCAL)).date().isoformat()
+    today = datetime.now(ZoneInfo(TZ_LOCAL)).strftime("%Y-%m-%d")
     print(f"=== Ingestion for {today} ===")
-    fixtures.sync_fixtures()          # refresh schedule + yesterday's results
-    injuries.sync_injuries(today)
-    injuries.sync_lineups(today)
+    fixtures.sync_fixtures()           # refresh schedule + results (football-data.org)
+    injuries.sync_injuries(today)      # no-op — no free source
+    apif_bridge.sync_lineups(today)    # starting XIs via API-Football free date feed
     odds.sync_match_odds(today)
     odds.sync_outrights()
     print("Ingestion complete.")

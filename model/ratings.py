@@ -16,7 +16,7 @@ def _load_matches() -> list[dict]:
     conn = get_db()
     rows = conn.execute(
         "SELECT fixture_id, team_id, opp_id, goals_for, goals_against, is_home "
-        "FROM team_matches WHERE is_home=1"
+        "FROM team_matches WHERE is_home=1 AND opp_id IS NOT NULL"
     ).fetchall()
     conn.close()
     return [

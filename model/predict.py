@@ -31,10 +31,9 @@ def predict_day(date_local: str) -> int:
     now = datetime.now(timezone.utc).isoformat()
     n = 0
     for fx in fixtures:
-        if fx["home_id"] not in ratings or fx["away_id"] not in ratings:
-            continue
-        atk_h, dfc_h = ratings[fx["home_id"]]
-        atk_a, dfc_a = ratings[fx["away_id"]]
+        # Default (0.0, 0.0) = average attack/defence for teams with no history yet
+        atk_h, dfc_h = ratings.get(fx["home_id"], (0.0, 0.0))
+        atk_a, dfc_a = ratings.get(fx["away_id"], (0.0, 0.0))
         mat = score_matrix(atk_h, dfc_h, atk_a, dfc_a, home_adv, rho)
         mk = derive_markets(mat)
         conn.execute(

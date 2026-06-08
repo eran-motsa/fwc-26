@@ -12,20 +12,21 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 
 CREATE TABLE IF NOT EXISTS fixtures (
-  id          INTEGER PRIMARY KEY,         -- API-Football fixture id
-  date_utc    TEXT NOT NULL,
-  date_local  TEXT NOT NULL,               -- YYYY-MM-DD in Asia/Jerusalem
-  kickoff_local TEXT,                       -- HH:MM in Asia/Jerusalem
-  stage       TEXT,                         -- 'Group Stage','Round of 32',...
-  round       TEXT,
-  home_id     INTEGER,
-  away_id     INTEGER,
-  home_name   TEXT,
-  away_name   TEXT,
-  venue       TEXT,
-  status      TEXT,                         -- 'NS','FT','LIVE',...
-  home_goals  INTEGER,
-  away_goals  INTEGER
+  id              INTEGER PRIMARY KEY,     -- football-data.org fixture id
+  date_utc        TEXT NOT NULL,
+  date_local      TEXT NOT NULL,           -- YYYY-MM-DD in Asia/Jerusalem
+  kickoff_local   TEXT,                    -- HH:MM in Asia/Jerusalem
+  stage           TEXT,                    -- 'Group Stage','Round of 32',...
+  round           TEXT,
+  home_id         INTEGER,
+  away_id         INTEGER,
+  home_name       TEXT,
+  away_name       TEXT,
+  venue           TEXT,
+  status          TEXT,                    -- 'NS','FT','LIVE',...
+  home_goals      INTEGER,
+  away_goals      INTEGER,
+  apif_fixture_id INTEGER                  -- API-Football id, set on match day for lineup pulls
 );
 
 -- Historical matches (qualifiers + friendlies) used to seed model ratings.
