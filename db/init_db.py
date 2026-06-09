@@ -41,6 +41,11 @@ def main() -> None:
           goals INTEGER DEFAULT 0, rank INTEGER, source TEXT, created_at TEXT
         )
     """)
+    try:
+        conn.execute("ALTER TABLE golden_boot_candidates ADD COLUMN odds REAL DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass  # column already exists
     # Migrate: add apif_id column to teams if not present.
     try:
         conn.execute("ALTER TABLE teams ADD COLUMN apif_id INTEGER")

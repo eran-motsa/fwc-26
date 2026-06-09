@@ -88,38 +88,44 @@ def simulate_winner(n_sims: int = 20000, blend: float = 0.10) -> list[dict]:
 def golden_boot(top_k: int = 15) -> list[dict]:
     """Rank likely top scorers.
 
-    Pre-tournament: squad attackers sorted by team trophy probability (market proxy).
-    Tournament in progress: real WC 2026 goal scorers sorted by goal count.
-    Shows player name, team, team win probability (odds proxy), and goals scored.
+    Pre-tournament: real bookmaker top-scorer odds, sorted lowest (favourite) first.
+    Tournament in progress: real WC 2026 goal count, enriched with odds where known.
     """
     conn = get_db()
-    rows = conn.execute(
-        "SELECT player, team_name AS team, goals, rank FROM golden_boot_candidates "
-        "ORDER BY goals DESC, rank ASC LIMIT ?",
-        (top_k * 3,),
+
+    # Check for real WC 2026 scorers with goals
+    wc26_rows = conn.execute(
+        "SELECT player, team_name AS team, goals, COALESCE(odds,0.0) AS odds "
+        "FROM golden_boot_candidates WHERE source='wc2026' AND goals > 0 "
+        "ORDER BY goals DESC, odds ASC LIMIT ?",
+        (top_k,),
     ).fetchall()
-    if not rows:
+
+    tournament_started = len(wc26_rows) > 0
+
+    if tournament_started:
+        rows = wc26_rows
+    else:
+        # Pre-tournament: market bookmaker odds, sorted favourite-first
         rows = conn.execute(
-            """SELECT l.player, t.name AS team, 0 AS goals, 0 AS rank
+            "SELECT player, team_name AS team, 0 AS goals, COALESCE(odds,0.0) AS odds "
+            "FROM golden_boot_candidates WHERE source='market' "
+            "ORDER BY CASE WHEN odds > 0 THEN odds ELSE 9999 END ASC LIMIT ?",
+            (top_k,),
+        ).fetchall()
+
+    if not rows:
+        # Final fallback: lineups strikers
+        rows = conn.execute(
+            """SELECT l.player, t.name AS team, 0 AS goals, 0.0 AS odds
                FROM lineups l JOIN teams t ON t.id=l.team_id
                WHERE l.pos='F' GROUP BY l.player ORDER BY RANDOM() LIMIT ?""",
-            (top_k * 3,),
+            (top_k,),
         ).fetchall()
+
     conn.close()
-
-    # Team trophy probability acts as proxy odds for pre-tournament sorting
-    winner_probs = {t["team"]: t["prob"] for t in simulate_winner()}
-
-    result = []
-    for r in rows:
-        tp = winner_probs.get(r["team"], 0.0)
-        result.append({"player": r["player"], "team": r["team"],
-                        "goals": r["goals"], "team_prob": tp})
-
-    tournament_started = any(r["goals"] > 0 for r in result)
-    if tournament_started:
-        result.sort(key=lambda x: (-x["goals"], -x["team_prob"]))
-    else:
-        result.sort(key=lambda x: (-x["team_prob"], x["player"]))
-
-    return result[:top_k]
+    return [
+        {"player": r["player"], "team": r["team"],
+         "goals": r["goals"], "odds": r["odds"], "team_prob": 0.0}
+        for r in rows
+    ][:top_k]

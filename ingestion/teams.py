@@ -117,6 +117,55 @@ def sync_apif_ids() -> int:
     return n
 
 
+# Real bookmaker golden boot odds — seeded from market data, sorted by odds (favourite first).
+# Lower decimal odds = more likely to score most goals.
+_GOLDEN_BOOT_MARKET: list[tuple] = [
+    ("Kylian Mbappé",     "France",        6.5),
+    ("Harry Kane",        "England",       7.5),
+    ("Lionel Messi",      "Argentina",    13.0),
+    ("Mikel Oyarzabal",   "Spain",        13.0),
+    ("Erling Haaland",    "Norway",       13.0),
+    ("Lamine Yamal",      "Spain",        15.0),
+    ("Cristiano Ronaldo", "Portugal",     21.0),
+    ("Ousmane Dembélé",   "France",       21.0),
+    ("Vinícius Júnior",   "Brazil",       23.0),
+    ("Niclas Woltemade",  "Germany",      26.0),
+    ("Lautaro Martínez",  "Argentina",    26.0),
+    ("Raphinha",          "Brazil",       26.0),
+    ("Julián Álvarez",    "Argentina",    29.0),
+    ("Romelu Lukaku",     "Belgium",      29.0),
+    ("Kai Havertz",       "Germany",      29.0),
+    ("Bukayo Saka",       "England",      34.0),
+    ("Neymar",            "Brazil",       34.0),
+    ("Ferran Torres",     "Spain",        41.0),
+    ("Cody Gakpo",        "Netherlands",  41.0),
+    ("Jude Bellingham",   "England",      41.0),
+    ("Michael Olise",     "France",       41.0),
+    ("Mikel Merino",      "Spain",        41.0),
+]
+
+
+def seed_golden_boot_market() -> int:
+    """Seed golden boot candidates from real bookmaker odds (pre-tournament market data)."""
+    conn = get_db()
+    name_to_id = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM teams").fetchall()}
+    conn.execute("DELETE FROM golden_boot_candidates WHERE source='market'")
+    n = 0
+    for rank, (player, team_name, odds) in enumerate(_GOLDEN_BOOT_MARKET, 1):
+        team_id = name_to_id.get(team_name, 0)
+        conn.execute(
+            "INSERT OR REPLACE INTO golden_boot_candidates"
+            "(player, team_id, team_name, goals, rank, source, created_at, odds)"
+            " VALUES(?,?,?,?,?,?,?,?)",
+            (player, team_id, team_name, 0, rank, "market", _now(), odds),
+        )
+        n += 1
+    conn.commit()
+    conn.close()
+    print(f"Seeded {n} golden boot market candidates.")
+    return n
+
+
 def sync_golden_boot() -> int:
     """Seed golden boot contenders from WC 2026 data (football-data.org).
 
@@ -147,41 +196,18 @@ def sync_golden_boot() -> int:
         print(f"Stored {n} WC 2026 real scorers as golden boot candidates.")
         return n
 
-    # 2. No goals scored yet — use squad attackers ranked by team attack rating
-    ratings = {r["team_id"]: r["attack"] for r in
-               conn.execute("SELECT team_id, attack FROM ratings").fetchall()}
-    conn.close()
-
-    teams_data = fd_get("competitions/WC/teams", {"season": 2026}).get("teams", [])
-
-    # (attack_rating, fd_team_id, team_name, player_name)
-    candidates: list[tuple] = []
-    for team in teams_data:
-        fd_id = team["id"]
-        team_name = team["name"]
-        atk = ratings.get(fd_id, 0.0)
-        for player in team.get("squad", []):
-            if player.get("position") == "Offence":
-                candidates.append((atk, fd_id, team_name, player["name"]))
-
-    # Sort: best attacking teams first, then alphabetical within same team
-    candidates.sort(key=lambda x: (-x[0], x[2], x[3]))
-
+    # 2. No goals yet — use market-seeded data if available (most realistic)
     conn = get_db()
-    conn.execute("DELETE FROM golden_boot_candidates WHERE source='wc2026'")
-    n = 0
-    for rank, (_, fd_id, team_name, player_name) in enumerate(candidates[:20], 1):
-        conn.execute(
-            "INSERT OR REPLACE INTO golden_boot_candidates"
-            "(player, team_id, team_name, goals, rank, source, created_at)"
-            " VALUES(?,?,?,?,?,?,?)",
-            (player_name, fd_id, team_name, 0, rank, "wc2026", _now()),
-        )
-        n += 1
-    conn.commit()
+    count = conn.execute(
+        "SELECT COUNT(*) FROM golden_boot_candidates WHERE source='market'"
+    ).fetchone()[0]
     conn.close()
-    print(f"Stored {n} WC 2026 squad attackers as pre-tournament golden boot candidates.")
-    return n
+    if count > 0:
+        print(f"No WC 2026 goals yet. Using {count} market-seeded golden boot candidates.")
+        return count
+
+    # 3. Last resort — seed from market list now (first time setup)
+    return seed_golden_boot_market()
 
 
 def sync_recent_national_form(limit_per_team: int = 8) -> int:

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ date_local }} · Mundial 26 Agent{% endblock %}
+{% block title %}{{ date_local }} · FIFA World Cup 2026 Agent{% endblock %}
 {% block nav_today %}active{% endblock %}
 
 {% block content %}
@@ -30,14 +30,14 @@
       </ol>
     </div>
     <div class="tcard">
-      <h3 data-tip="Pre-tournament: WC 2026 squad attackers sorted by their team's trophy odds (team probability = proxy for scoring chances). Once goals are scored, re-sorted by actual WC 2026 goal count.">Golden Boot — Contenders</h3>
+      <h3 data-tip="Pre-tournament: ranked by bookmaker golden boot probability. % = implied chance of winning the Golden Boot (e.g. ~15% = bookmakers price this player at 6.5 to 1). Once WC 2026 goals are scored, re-ranked by goal count.">Golden Boot — Contenders</h3>
       <ol>
         {% for p in tournament.golden_boot %}
         <li>
           <span>{{ loop.index }}. {{ p.player }}</span>
           <span class="pct">
             {{ p.team }}
-            {% if p.team_prob %} · ~{{ (p.team_prob*100)|round(1) }}%{% endif %}
+            {% if p.odds %} · <span style="color:var(--gold);font-weight:600">~{{ (100/p.odds)|round(0)|int }}%</span>{% endif %}
             {% if p.goals %} · <b style="color:var(--gold-bright)">{{ p.goals }}g</b>{% endif %}
           </span>
         </li>
