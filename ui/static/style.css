@@ -210,8 +210,7 @@ table.history th { color: var(--gold); text-transform: uppercase; font-size: 11p
 }
 [data-tip]::after {
   content: attr(data-tip);
-  position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%);
+  position: absolute; bottom: calc(100% + 8px); left: 0;
   background: var(--panel-2); border: 1px solid rgba(212,175,55,0.35);
   color: var(--white); font-size: 11px; line-height: 1.5;
   font-family: var(--font-body); font-weight: 400;

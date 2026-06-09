@@ -86,6 +86,17 @@ CREATE TABLE IF NOT EXISTS outrights (
   market TEXT, selection TEXT, decimal_odds REAL, implied REAL, pulled_at TEXT
 );
 
+-- Pre-tournament golden boot contenders seeded from WC 2022 top scorers.
+CREATE TABLE IF NOT EXISTS golden_boot_candidates (
+  player    TEXT PRIMARY KEY,
+  team_id   INTEGER,
+  team_name TEXT,
+  goals     INTEGER DEFAULT 0,
+  rank      INTEGER,
+  source    TEXT,
+  created_at TEXT
+);
+
 -- Stage scoring config (the custom league rules from the screenshot).
 CREATE TABLE IF NOT EXISTS scoring_rules (
   stage         TEXT PRIMARY KEY,

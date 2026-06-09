@@ -34,6 +34,14 @@ def main() -> None:
         conn.commit()
     except Exception:
         pass  # column already exists
+    # Migrate: create golden_boot_candidates table if it doesn't exist yet.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS golden_boot_candidates (
+          player TEXT PRIMARY KEY, team_id INTEGER, team_name TEXT,
+          goals INTEGER DEFAULT 0, rank INTEGER, source TEXT, created_at TEXT
+        )
+    """)
+    conn.commit()
     for stage, (bonus, mult) in SCORING_RULES.items():
         conn.execute(
             "INSERT INTO scoring_rules(stage, exact_bonus, odds_multiplier) "

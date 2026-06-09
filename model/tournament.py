@@ -88,17 +88,22 @@ def simulate_winner(n_sims: int = 20000, blend: float = 0.10) -> list[dict]:
 def golden_boot(top_k: int = 15) -> list[dict]:
     """Rank likely top scorers.
 
-    Pre-tournament we don't have per-player goal data, so this uses the API's
-    top-scorers feed once available; until then it returns players from the
-    strongest attacking teams as a placeholder ranking that fills in daily.
+    Uses WC 2022 top scorers (from golden_boot_candidates) as a pre-tournament
+    seed. Falls back to forwards in match-day lineups once the tournament starts.
     """
     conn = get_db()
-    # If lineups exist, surface forwards from high-expected-goal teams.
     rows = conn.execute(
-        """SELECT l.player, l.team_id, t.name AS team
-           FROM lineups l JOIN teams t ON t.id=l.team_id
-           WHERE l.pos='F' GROUP BY l.player ORDER BY RANDOM() LIMIT ?""",
+        "SELECT player, team_name AS team, goals FROM golden_boot_candidates "
+        "ORDER BY goals DESC, rank ASC LIMIT ?",
         (top_k,),
     ).fetchall()
+    if not rows:
+        rows = conn.execute(
+            """SELECT l.player, t.name AS team, 0 AS goals
+               FROM lineups l JOIN teams t ON t.id=l.team_id
+               WHERE l.pos='F' GROUP BY l.player ORDER BY RANDOM() LIMIT ?""",
+            (top_k,),
+        ).fetchall()
     conn.close()
-    return [{"player": r["player"], "team": r["team"]} for r in rows]
+    return [{"player": r["player"], "team": r["team"], "goals": r["goals"]}
+            for r in rows]

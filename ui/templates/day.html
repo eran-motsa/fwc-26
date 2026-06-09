@@ -33,7 +33,10 @@
       <h3>Golden Boot — Contenders</h3>
       <ol>
         {% for p in tournament.golden_boot %}
-        <li><span>{{ loop.index }}. {{ p.player }}</span><span class="pct">{{ p.team }}</span></li>
+        <li>
+          <span>{{ loop.index }}. {{ p.player }}</span>
+          <span class="pct">{{ p.team }}{% if p.goals %} · {{ p.goals }}g WC22{% endif %}</span>
+        </li>
         {% else %}
         <li><span class="pct">Fills in once squads & lineups are published.</span></li>
         {% endfor %}
