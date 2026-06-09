@@ -88,22 +88,38 @@ def simulate_winner(n_sims: int = 20000, blend: float = 0.10) -> list[dict]:
 def golden_boot(top_k: int = 15) -> list[dict]:
     """Rank likely top scorers.
 
-    Uses WC 2022 top scorers (from golden_boot_candidates) as a pre-tournament
-    seed. Falls back to forwards in match-day lineups once the tournament starts.
+    Pre-tournament: squad attackers sorted by team trophy probability (market proxy).
+    Tournament in progress: real WC 2026 goal scorers sorted by goal count.
+    Shows player name, team, team win probability (odds proxy), and goals scored.
     """
     conn = get_db()
     rows = conn.execute(
-        "SELECT player, team_name AS team, goals FROM golden_boot_candidates "
+        "SELECT player, team_name AS team, goals, rank FROM golden_boot_candidates "
         "ORDER BY goals DESC, rank ASC LIMIT ?",
-        (top_k,),
+        (top_k * 3,),
     ).fetchall()
     if not rows:
         rows = conn.execute(
-            """SELECT l.player, t.name AS team, 0 AS goals
+            """SELECT l.player, t.name AS team, 0 AS goals, 0 AS rank
                FROM lineups l JOIN teams t ON t.id=l.team_id
                WHERE l.pos='F' GROUP BY l.player ORDER BY RANDOM() LIMIT ?""",
-            (top_k,),
+            (top_k * 3,),
         ).fetchall()
     conn.close()
-    return [{"player": r["player"], "team": r["team"], "goals": r["goals"]}
-            for r in rows]
+
+    # Team trophy probability acts as proxy odds for pre-tournament sorting
+    winner_probs = {t["team"]: t["prob"] for t in simulate_winner()}
+
+    result = []
+    for r in rows:
+        tp = winner_probs.get(r["team"], 0.0)
+        result.append({"player": r["player"], "team": r["team"],
+                        "goals": r["goals"], "team_prob": tp})
+
+    tournament_started = any(r["goals"] > 0 for r in result)
+    if tournament_started:
+        result.sort(key=lambda x: (-x["goals"], -x["team_prob"]))
+    else:
+        result.sort(key=lambda x: (-x["team_prob"], x["player"]))
+
+    return result[:top_k]

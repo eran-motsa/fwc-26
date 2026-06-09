@@ -22,7 +22,7 @@
   {% if tournament and tournament.winner %}
   <div class="tpanel">
     <div class="tcard">
-      <h3>Winner — Trophy Probability</h3>
+      <h3 data-tip="Blended probability: 10% Dixon-Coles model + 90% bookmaker market consensus. Normalised across all 48 teams. Updates daily as outright odds move.">Winner — Trophy Probability</h3>
       <ol>
         {% for t in tournament.winner %}
         <li><span>{{ loop.index }}. {{ t.team }}</span><span class="pct">{{ (t.prob*100)|round(1) }}%</span></li>
@@ -30,12 +30,16 @@
       </ol>
     </div>
     <div class="tcard">
-      <h3>Golden Boot — Contenders</h3>
+      <h3 data-tip="Pre-tournament: WC 2026 squad attackers sorted by their team's trophy odds (team probability = proxy for scoring chances). Once goals are scored, re-sorted by actual WC 2026 goal count.">Golden Boot — Contenders</h3>
       <ol>
         {% for p in tournament.golden_boot %}
         <li>
           <span>{{ loop.index }}. {{ p.player }}</span>
-          <span class="pct">{{ p.team }}{% if p.goals %} · {{ p.goals }}g{% endif %}</span>
+          <span class="pct">
+            {{ p.team }}
+            {% if p.team_prob %} · ~{{ (p.team_prob*100)|round(1) }}%{% endif %}
+            {% if p.goals %} · <b style="color:var(--gold-bright)">{{ p.goals }}g</b>{% endif %}
+          </span>
         </li>
         {% else %}
         <li><span class="pct">Fills in once squads & lineups are published.</span></li>

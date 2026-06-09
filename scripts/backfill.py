@@ -27,6 +27,9 @@ def main() -> None:
     print("▶ Syncing APIF team IDs (for H2H lookups)…")
     teams.sync_apif_ids()
 
+    print("▶ Pulling 2024-season national team form (48 teams × ~8 matches)…")
+    teams.sync_recent_national_form()
+
     print("▶ Syncing golden boot contenders (WC 2026)…")
     teams.sync_golden_boot()
 

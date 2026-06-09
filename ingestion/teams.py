@@ -184,6 +184,61 @@ def sync_golden_boot() -> int:
     return n
 
 
+def sync_recent_national_form(limit_per_team: int = 8) -> int:
+    """Pull 2024-season national team fixtures for all 48 WC 2026 teams.
+
+    API-Football season=2024 covers the 2024-2025 international calendar
+    (Nations League, qualifiers, continental cups, friendlies). Stores results
+    in team_matches so both _recent_form() display and Dixon-Coles ratings improve.
+    Costs 1 API call per team (48 calls). Run once during backfill.
+    """
+    import time
+    conn = get_db()
+    all_teams = conn.execute(
+        "SELECT id, name, apif_id FROM teams WHERE apif_id IS NOT NULL"
+    ).fetchall()
+    apif_to_fd = {t["apif_id"]: t["id"] for t in all_teams}
+    conn.close()
+
+    total = 0
+    for team in all_teams:
+        time.sleep(6.5)  # respect 10 req/min rate limit
+        try:
+            data = apif_get("fixtures", {"team": team["apif_id"], "season": 2024, "status": "FT"})
+        except Exception as e:
+            print(f"  {team['name']}: {e}")
+            continue
+        matches = sorted(data.get("response", []), key=lambda m: m["fixture"]["date"], reverse=True)
+        conn = get_db()
+        for item in matches[:limit_per_team]:
+            fx_id   = item["fixture"]["id"]
+            h_apif  = item["teams"]["home"]["id"]
+            a_apif  = item["teams"]["away"]["id"]
+            h_goals = item["goals"]["home"]
+            a_goals = item["goals"]["away"]
+            if h_goals is None or a_goals is None:
+                continue
+            is_home = (h_apif == team["apif_id"])
+            team_fd = apif_to_fd.get(h_apif if is_home else a_apif)
+            opp_fd  = apif_to_fd.get(a_apif if is_home else h_apif)
+            gf = h_goals if is_home else a_goals
+            ga = a_goals if is_home else h_goals
+            if team_fd is None:
+                continue
+            conn.execute(
+                "INSERT OR IGNORE INTO team_matches"
+                "(fixture_id, team_id, opp_id, goals_for, goals_against, date_utc, is_home)"
+                " VALUES(?,?,?,?,?,?,?)",
+                (fx_id, team_fd, opp_fd, gf, ga, item["fixture"]["date"], int(is_home)),
+            )
+            total += 1
+        conn.commit()
+        conn.close()
+        print(f"  {team['name']}: {min(len(matches), limit_per_team)} matches synced")
+    print(f"Total recent form rows stored: {total}")
+    return total
+
+
 if __name__ == "__main__":
     sync_team_history()
     sync_apif_ids()
