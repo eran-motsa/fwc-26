@@ -15,21 +15,37 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import get_db  # noqa: E402
+from ingestion.apif_bridge import get_h2h_from_cache  # noqa: E402
 from model.scoring import get_stage_rule, optimal_bet  # noqa: E402
 from model.tournament import golden_boot, simulate_winner  # noqa: E402
 
 
 def _recent_form(conn, team_id: int, limit: int = 6) -> str:
-    rows = conn.execute(
-        "SELECT goals_for, goals_against FROM team_matches "
+    # WC 2026 finished matches come first (most relevant, most recent)
+    wc26 = conn.execute(
+        """SELECT CASE WHEN home_id=? THEN home_goals ELSE away_goals END AS gf,
+                  CASE WHEN home_id=? THEN away_goals ELSE home_goals END AS ga
+           FROM fixtures WHERE (home_id=? OR away_id=?) AND status='FT'
+              AND home_goals IS NOT NULL
+           ORDER BY date_utc DESC LIMIT ?""",
+        (team_id, team_id, team_id, team_id, limit),
+    ).fetchall()
+    # Supplement with WC 2022 / historical data if WC 2026 games < limit
+    historical = conn.execute(
+        "SELECT goals_for AS gf, goals_against AS ga FROM team_matches "
         "WHERE team_id=? ORDER BY date_utc DESC LIMIT ?",
         (team_id, limit),
     ).fetchall()
+    combined = list(wc26) + list(historical)
+    combined = combined[:limit]
     out = []
-    for r in rows:
-        if r["goals_for"] > r["goals_against"]:
+    for r in combined:
+        gf, ga = r["gf"], r["ga"]
+        if gf is None or ga is None:
+            continue
+        if gf > ga:
             out.append("W")
-        elif r["goals_for"] < r["goals_against"]:
+        elif gf < ga:
             out.append("L")
         else:
             out.append("D")
@@ -76,6 +92,7 @@ def build_day(date_local: str) -> dict:
             "home_goals": fx["home_goals"], "away_goals": fx["away_goals"],
             "form_home": _recent_form(conn, fx["home_id"]),
             "form_away": _recent_form(conn, fx["away_id"]),
+            "h2h": get_h2h_from_cache(fx["home_id"], fx["away_id"]),
             "injuries": _injuries(conn, fx["id"]),
             "lineups": _lineups(conn, fx["id"]),
             "model": None, "consensus": None, "value": None, "recommended_bet": None,

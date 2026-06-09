@@ -10,6 +10,7 @@ Costs: 1 call (date feed) + 1 call/WC match (lineups) ≈ 5 calls/day max.
 """
 from __future__ import annotations
 
+import json
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -79,10 +80,18 @@ def sync_lineups(date_local: str) -> int:
             print(f"  Warning: no DB fixture for '{apif_home}' vs '{apif_away}' on {date_local}")
             continue
 
-        # Store APIF fixture id for traceability / future use
+        # Store APIF fixture id + team APIF IDs (for H2H lookups)
         conn.execute(
             "UPDATE fixtures SET apif_fixture_id=? WHERE id=?", (apif_id, db_id)
         )
+        for side in ("home", "away"):
+            apif_team_name = f["teams"][side]["name"]
+            apif_team_id = f["teams"][side]["id"]
+            fd_team_name = _APIF_TO_FD.get(apif_team_name, apif_team_name)
+            conn.execute(
+                "UPDATE teams SET apif_id=? WHERE LOWER(name)=? AND apif_id IS NULL",
+                (apif_team_id, _norm(fd_team_name)),
+            )
 
         lineup_data = apif_get("fixtures/lineups", {"fixture": apif_id})
         for team_block in lineup_data.get("response", []):
@@ -113,6 +122,88 @@ def sync_lineups(date_local: str) -> int:
     conn.commit()
     conn.close()
     print(f"Stored {n} lineup entries for {date_local}.")
+    return n
+
+
+def _fetch_h2h(apif_id1: int, apif_id2: int) -> list[dict]:
+    """Call API-Football H2H endpoint and return normalised finished results."""
+    data = apif_get("fixtures/headtohead", {"h2h": f"{apif_id1}-{apif_id2}"})
+    finished = [
+        f for f in data.get("response", [])
+        if f["fixture"]["status"]["short"] in ("FT", "AET", "PEN")
+    ]
+    finished.sort(key=lambda f: f["fixture"]["date"], reverse=True)
+    results = []
+    for f in finished[:10]:
+        home = _APIF_TO_FD.get(f["teams"]["home"]["name"], f["teams"]["home"]["name"])
+        away = _APIF_TO_FD.get(f["teams"]["away"]["name"], f["teams"]["away"]["name"])
+        results.append({
+            "date": f["fixture"]["date"][:10],
+            "home": home,
+            "away": away,
+            "home_goals": f["goals"]["home"],
+            "away_goals": f["goals"]["away"],
+        })
+    return results
+
+
+def get_h2h_from_cache(home_fd_id: int, away_fd_id: int) -> list[dict]:
+    """Return cached H2H results for a pair of FD team IDs. Empty if not cached."""
+    conn = get_db()
+    ids = conn.execute(
+        "SELECT apif_id FROM teams WHERE id IN (?,?)", (home_fd_id, away_fd_id)
+    ).fetchall()
+    conn.close()
+    if len(ids) < 2 or any(r["apif_id"] is None for r in ids):
+        return []
+    k1 = min(ids[0]["apif_id"], ids[1]["apif_id"])
+    k2 = max(ids[0]["apif_id"], ids[1]["apif_id"])
+    conn = get_db()
+    row = conn.execute(
+        "SELECT payload_json FROM h2h_cache WHERE team1_apif=? AND team2_apif=?",
+        (k1, k2),
+    ).fetchone()
+    conn.close()
+    return json.loads(row["payload_json"])[:5] if row else []
+
+
+def sync_h2h_for_day(date_local: str) -> int:
+    """Fetch and cache H2H for all fixtures on date_local that have APIF IDs.
+
+    Skips pairs already in the cache (H2H history is stable; ~10 calls/day max).
+    """
+    conn = get_db()
+    fixtures = conn.execute(
+        "SELECT f.id, t1.apif_id AS home_apif, t2.apif_id AS away_apif "
+        "FROM fixtures f "
+        "JOIN teams t1 ON t1.id=f.home_id "
+        "JOIN teams t2 ON t2.id=f.away_id "
+        "WHERE f.date_local=? AND t1.apif_id IS NOT NULL AND t2.apif_id IS NOT NULL",
+        (date_local,),
+    ).fetchall()
+    conn.close()
+    n = 0
+    for fx in fixtures:
+        k1 = min(fx["home_apif"], fx["away_apif"])
+        k2 = max(fx["home_apif"], fx["away_apif"])
+        conn = get_db()
+        already = conn.execute(
+            "SELECT 1 FROM h2h_cache WHERE team1_apif=? AND team2_apif=?", (k1, k2)
+        ).fetchone()
+        conn.close()
+        if already:
+            continue
+        results = _fetch_h2h(fx["home_apif"], fx["away_apif"])
+        conn = get_db()
+        conn.execute(
+            "INSERT OR REPLACE INTO h2h_cache(team1_apif,team2_apif,payload_json,fetched_at)"
+            " VALUES(?,?,?,?)",
+            (k1, k2, json.dumps(results), datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        conn.close()
+        n += 1
+    print(f"Synced H2H for {n} new team pairs on {date_local}.")
     return n
 
 

@@ -41,6 +41,19 @@ def main() -> None:
           goals INTEGER DEFAULT 0, rank INTEGER, source TEXT, created_at TEXT
         )
     """)
+    # Migrate: add apif_id column to teams if not present.
+    try:
+        conn.execute("ALTER TABLE teams ADD COLUMN apif_id INTEGER")
+    except Exception:
+        pass
+    # Migrate: create h2h_cache table if not present.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS h2h_cache (
+          team1_apif INTEGER, team2_apif INTEGER,
+          payload_json TEXT, fetched_at TEXT,
+          PRIMARY KEY (team1_apif, team2_apif)
+        )
+    """)
     conn.commit()
     for stage, (bonus, mult) in SCORING_RULES.items():
         conn.execute(

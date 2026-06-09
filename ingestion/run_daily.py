@@ -22,9 +22,10 @@ def main() -> None:
     require_keys()
     today = datetime.now(ZoneInfo(TZ_LOCAL)).strftime("%Y-%m-%d")
     print(f"=== Ingestion for {today} ===")
-    fixtures.sync_fixtures()           # refresh schedule + results (football-data.org)
-    injuries.sync_injuries(today)      # no-op — no free source
-    apif_bridge.sync_lineups(today)    # starting XIs via API-Football free date feed
+    fixtures.sync_fixtures()                # refresh schedule + results (football-data.org)
+    injuries.sync_injuries(today)           # no-op — no free source
+    apif_bridge.sync_lineups(today)         # starting XIs via API-Football free date feed
+    apif_bridge.sync_h2h_for_day(today)     # H2H for today's matches (cached, ~N calls)
     odds.sync_match_odds(today)
     odds.sync_outrights()
     print("Ingestion complete.")

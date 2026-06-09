@@ -130,3 +130,12 @@ CREATE TABLE IF NOT EXISTS bets (
 
 -- Tracks API call counts per day to respect free-tier limits.
 CREATE TABLE IF NOT EXISTS api_meta (key TEXT PRIMARY KEY, value TEXT);
+
+-- Cached head-to-head results per team pair (keyed by sorted APIF team IDs).
+CREATE TABLE IF NOT EXISTS h2h_cache (
+  team1_apif INTEGER,
+  team2_apif INTEGER,
+  payload_json TEXT,
+  fetched_at TEXT,
+  PRIMARY KEY (team1_apif, team2_apif)
+);

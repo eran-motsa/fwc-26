@@ -1,10 +1,7 @@
-"""Pull WC 2022 match results from API-Football to seed the Dixon-Coles ratings.
+"""Sync team history (WC 2022 ratings seed), APIF team IDs, and golden boot data.
 
-API-Football free tier allows historical seasons 2022-2024. One call to
-fixtures?league=1&season=2022 returns all 64 matches, covering 26 of the 48
-teams in WC 2026. Teams that didn't qualify for 2022 use default ratings.
-
-Uses football-data.org team IDs (our primary key) via name-matching.
+Uses both football-data.org (WC 2026 squad/scorer data) and API-Football
+(WC 2022 historical match data for ratings seed and APIF ID mapping).
 """
 from __future__ import annotations
 
@@ -15,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import get_db  # noqa: E402
 from ingestion.client import get as apif_get  # noqa: E402
+from ingestion.fd_client import get as fd_get  # noqa: E402
 
 
 def _now() -> str:
@@ -88,44 +86,105 @@ def sync_team_history(last_n: int = 10) -> int:
     return total
 
 
-def sync_golden_boot() -> int:
-    """Seed golden boot contenders from WC 2022 top scorers (1 API call).
+def sync_apif_ids() -> int:
+    """Store API-Football team IDs for WC 2026 teams using WC 2022 fixture data.
 
-    Filters to players whose national teams qualified for WC 2026. Stored in
-    golden_boot_candidates and used by the UI until match-day lineups arrive.
+    26 of 48 WC 2026 teams also played in WC 2022. Their APIF IDs are extracted
+    from the 2022 fixture data and stored in teams.apif_id for H2H lookups.
+    Costs 1 API-Football call.
     """
-    name_to_id = _build_name_index()
-    try:
-        data = apif_get("players/topscorers", {"league": 1, "season": 2022})
-    except Exception as e:
-        print(f"Golden boot sync failed (API error): {e}")
-        return 0
+    name_to_fd_id = _build_name_index()
+    data = apif_get("fixtures", {"league": 1, "season": 2022})
+
+    apif_name_to_id: dict[str, int] = {}
+    for item in data.get("response", []):
+        for side in ("home", "away"):
+            t = item["teams"][side]
+            apif_name_to_id[t["name"]] = t["id"]
 
     conn = get_db()
-    conn.execute("DELETE FROM golden_boot_candidates WHERE source='wc2022'")
     n = 0
-    for rank, item in enumerate(data.get("response", []), 1):
-        player_name = item["player"]["name"]
-        stats = item.get("statistics", [{}])[0]
-        apif_team = stats.get("team", {}).get("name", "")
-        goals = stats.get("goals", {}).get("total") or 0
-        fd_name = _APIF_TO_FD.get(apif_team, apif_team)
-        team_id = name_to_id.get(_norm(fd_name))
-        if team_id is None:
-            continue  # team didn't qualify for WC 2026
+    for apif_name, apif_id in apif_name_to_id.items():
+        fd_name = _APIF_TO_FD.get(apif_name, apif_name)
+        fd_id = name_to_fd_id.get(_norm(fd_name))
+        if fd_id is None:
+            continue  # not a WC 2026 team
+        conn.execute("UPDATE teams SET apif_id=? WHERE id=?", (apif_id, fd_id))
+        n += 1
+    conn.commit()
+    conn.close()
+    print(f"Stored APIF IDs for {n} WC 2026 teams (from WC 2022 data).")
+    return n
+
+
+def sync_golden_boot() -> int:
+    """Seed golden boot contenders from WC 2026 data (football-data.org).
+
+    Uses real WC 2026 goal scorers once the tournament is underway. Pre-tournament
+    (or when no goals yet), falls back to squad attackers ranked by team attack
+    rating as a proxy for scoring likelihood.
+    Costs 1-2 football-data.org API calls.
+    """
+    conn = get_db()
+
+    # 1. Try real WC 2026 goal scorers
+    scorer_data = fd_get("competitions/WC/scorers", {"limit": 20})
+    scorers = scorer_data.get("scorers", [])
+    if scorers:
+        conn.execute("DELETE FROM golden_boot_candidates WHERE source='wc2026'")
+        n = 0
+        for rank, s in enumerate(scorers, 1):
+            conn.execute(
+                "INSERT OR REPLACE INTO golden_boot_candidates"
+                "(player, team_id, team_name, goals, rank, source, created_at)"
+                " VALUES(?,?,?,?,?,?,?)",
+                (s["player"]["name"], s["team"]["id"], s["team"]["name"],
+                 s["numberOfGoals"], rank, "wc2026", _now()),
+            )
+            n += 1
+        conn.commit()
+        conn.close()
+        print(f"Stored {n} WC 2026 real scorers as golden boot candidates.")
+        return n
+
+    # 2. No goals scored yet — use squad attackers ranked by team attack rating
+    ratings = {r["team_id"]: r["attack"] for r in
+               conn.execute("SELECT team_id, attack FROM ratings").fetchall()}
+    conn.close()
+
+    teams_data = fd_get("competitions/WC/teams", {"season": 2026}).get("teams", [])
+
+    # (attack_rating, fd_team_id, team_name, player_name)
+    candidates: list[tuple] = []
+    for team in teams_data:
+        fd_id = team["id"]
+        team_name = team["name"]
+        atk = ratings.get(fd_id, 0.0)
+        for player in team.get("squad", []):
+            if player.get("position") == "Offence":
+                candidates.append((atk, fd_id, team_name, player["name"]))
+
+    # Sort: best attacking teams first, then alphabetical within same team
+    candidates.sort(key=lambda x: (-x[0], x[2], x[3]))
+
+    conn = get_db()
+    conn.execute("DELETE FROM golden_boot_candidates WHERE source='wc2026'")
+    n = 0
+    for rank, (_, fd_id, team_name, player_name) in enumerate(candidates[:20], 1):
         conn.execute(
             "INSERT OR REPLACE INTO golden_boot_candidates"
             "(player, team_id, team_name, goals, rank, source, created_at)"
             " VALUES(?,?,?,?,?,?,?)",
-            (player_name, team_id, fd_name, goals, rank, "wc2022", _now()),
+            (player_name, fd_id, team_name, 0, rank, "wc2026", _now()),
         )
         n += 1
     conn.commit()
     conn.close()
-    print(f"Stored {n} golden boot candidates (WC 2022 top scorers).")
+    print(f"Stored {n} WC 2026 squad attackers as pre-tournament golden boot candidates.")
     return n
 
 
 if __name__ == "__main__":
     sync_team_history()
+    sync_apif_ids()
     sync_golden_boot()

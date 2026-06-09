@@ -35,7 +35,7 @@
         {% for p in tournament.golden_boot %}
         <li>
           <span>{{ loop.index }}. {{ p.player }}</span>
-          <span class="pct">{{ p.team }}{% if p.goals %} · {{ p.goals }}g WC22{% endif %}</span>
+          <span class="pct">{{ p.team }}{% if p.goals %} · {{ p.goals }}g{% endif %}</span>
         </li>
         {% else %}
         <li><span class="pct">Fills in once squads & lineups are published.</span></li>
@@ -108,6 +108,18 @@
         {% endif %}
       </div>
     </div>
+
+    {% if m.h2h %}
+    <div class="h2h">
+      <h4>Head-to-Head (last {{ m.h2h|length }} meetings)</h4>
+      {% for r in m.h2h %}
+      <div class="h2h-row">
+        <span class="h2h-date">{{ r.date }}</span>
+        <span class="h2h-teams">{{ r.home }} <b>{{ r.home_goals }}–{{ r.away_goals }}</b> {{ r.away }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     {% if m.recommended_bet %}
     {% set rb = m.recommended_bet %}
