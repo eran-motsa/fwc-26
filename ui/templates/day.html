@@ -65,17 +65,20 @@
         {% if m.model %}
         <div class="probrow">
           {% set v = m.value or {} %}
-          <div class="prob {{ 'edge-pos' if v.home and v.home>0.03 }}">
+          <div class="prob {{ 'edge-pos' if v.home and v.home>0.03 }}"
+               data-tip="Home win probability from our Dixon-Coles model. Green border = model gives &gt;3% more chance than bookmaker — potential value bet.">
             <div class="lbl">1</div><div class="val">{{ (m.model.p_home*100)|round }}%</div></div>
-          <div class="prob {{ 'edge-pos' if v.draw and v.draw>0.03 }}">
+          <div class="prob {{ 'edge-pos' if v.draw and v.draw>0.03 }}"
+               data-tip="Draw probability from our model. Green border = model sees more draw chance than bookmaker consensus.">
             <div class="lbl">X</div><div class="val">{{ (m.model.p_draw*100)|round }}%</div></div>
-          <div class="prob {{ 'edge-pos' if v.away and v.away>0.03 }}">
+          <div class="prob {{ 'edge-pos' if v.away and v.away>0.03 }}"
+               data-tip="Away win probability from our model. Green border = model gives &gt;3% more chance than bookmaker — potential value bet.">
             <div class="lbl">2</div><div class="val">{{ (m.model.p_away*100)|round }}%</div></div>
         </div>
-        <div class="kv"><span>Expected goals</span><b>{{ m.model.exp_home_goals }} – {{ m.model.exp_away_goals }}</b></div>
-        <div class="kv"><span>Most likely score</span><b>{{ m.model.top_scoreline }}</b></div>
-        <div class="kv"><span>Over 2.5</span><b>{{ (m.model.over25*100)|round }}%</b></div>
-        <div class="kv"><span>Both teams score</span><b>{{ (m.model.btts*100)|round }}%</b></div>
+        <div class="kv"><span data-tip="Average goals each team is projected to score. Derived from the Dixon-Coles Poisson model using attack/defence ratings.">Expected goals</span><b>{{ m.model.exp_home_goals }} – {{ m.model.exp_away_goals }}</b></div>
+        <div class="kv"><span data-tip="The single scoreline with the highest probability under the model. Not always the same as the recommended bet.">Most likely score</span><b>{{ m.model.top_scoreline }}</b></div>
+        <div class="kv"><span data-tip="Probability the match ends with 3 or more total goals combined.">Over 2.5</span><b>{{ (m.model.over25*100)|round }}%</b></div>
+        <div class="kv"><span data-tip="Probability both teams score at least once (BTTS market).">Both teams score</span><b>{{ (m.model.btts*100)|round }}%</b></div>
         {% else %}
         <div class="kv"><span>Awaiting daily computation</span></div>
         {% endif %}
@@ -85,16 +88,16 @@
         <h4>Bookmaker Consensus</h4>
         {% if m.consensus %}
         <div class="probrow">
-          <div class="prob"><div class="lbl">1</div><div class="val">{{ (m.consensus.cp_home*100)|round }}%</div></div>
-          <div class="prob"><div class="lbl">X</div><div class="val">{{ (m.consensus.cp_draw*100)|round }}%</div></div>
-          <div class="prob"><div class="lbl">2</div><div class="val">{{ (m.consensus.cp_away*100)|round }}%</div></div>
+          <div class="prob" data-tip="Bookmaker-implied home win probability, averaged across all books with the overround (vig) removed."><div class="lbl">1</div><div class="val">{{ (m.consensus.cp_home*100)|round }}%</div></div>
+          <div class="prob" data-tip="Bookmaker-implied draw probability, vig-free consensus across all books."><div class="lbl">X</div><div class="val">{{ (m.consensus.cp_draw*100)|round }}%</div></div>
+          <div class="prob" data-tip="Bookmaker-implied away win probability, averaged across all books with vig removed."><div class="lbl">2</div><div class="val">{{ (m.consensus.cp_away*100)|round }}%</div></div>
         </div>
-        <div class="kv"><span>Fair odds (1 / X / 2)</span><b>{{ m.consensus.fair_home }} / {{ m.consensus.fair_draw }} / {{ m.consensus.fair_away }}</b></div>
-        <div class="kv"><span>Books in consensus</span><b>{{ m.consensus.n_books }}</b></div>
+        <div class="kv"><span data-tip="True decimal odds with the bookmaker margin stripped out. If you can bet at higher odds than these, you have a positive expected value edge.">Fair odds (1 / X / 2)</span><b>{{ m.consensus.fair_home }} / {{ m.consensus.fair_draw }} / {{ m.consensus.fair_away }}</b></div>
+        <div class="kv"><span data-tip="Number of bookmakers contributing to this consensus. More books = more reliable average.">Books in consensus</span><b>{{ m.consensus.n_books }}</b></div>
         {% else %}
         <div class="kv"><span>Odds load on match day</span></div>
         {% endif %}
-        <div class="kv"><span>Form (home / away)</span>
+        <div class="kv"><span data-tip="Last 5 results for each team (W=win, D=draw, L=loss), most recent on the right. Strong form may indicate momentum not fully captured by ratings.">Form (home / away)</span>
           <b><span class="form">{% for c in m.form_home %}<span class="{{c}}">{{c}}</span>{% endfor %}</span>
              / <span class="form">{% for c in m.form_away %}<span class="{{c}}">{{c}}</span>{% endfor %}</span></b></div>
         {% if m.injuries %}
@@ -106,7 +109,7 @@
     {% if m.recommended_bet %}
     {% set rb = m.recommended_bet %}
     <div class="rec">
-      <h4>Recommended Bet (maximises league points)</h4>
+      <h4 data-tip="The scoreline that maximises expected league points. Formula: EP = P(direction) × odds × stage_bonus + P(exact) × exact_bonus. Top 5 alternatives shown below.">Recommended Bet (maximises league points)</h4>
       <div class="pick">{{ rb.best.scoreline }}
         <span class="ep">→ {{ rb.best.expected_points }} expected pts
         (bonus {{ rb.stage_bonus }}, dir odds {{ rb.best.direction_odds }})</span></div>

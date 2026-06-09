@@ -44,8 +44,22 @@ def _outright_prior() -> dict:
     return {r["selection"]: r["imp"] / total for r in rows}
 
 
-def simulate_winner(n_sims: int = 20000, blend: float = 0.5) -> list[dict]:
-    """Estimate trophy probability per team (blend of model strength + market)."""
+# The Odds API uses different team names for a handful of teams vs football-data.org
+_DB_TO_ODDS: dict[str, str] = {
+    "Korea Republic": "South Korea",
+    "Côte d'Ivoire": "Ivory Coast",
+    "Bosnia and Herzegovina": "Bosnia & Herzegovina",
+    "North Macedonia": "North Macedonia",
+    "Iran": "IR Iran",
+}
+
+
+def simulate_winner(n_sims: int = 20000, blend: float = 0.10) -> list[dict]:
+    """Estimate trophy probability per team (blend of model strength + market).
+
+    blend=0.10 means 10% model / 90% bookmaker market. Heavy market weighting
+    keeps results realistic while preserving a small model signal.
+    """
     teams, names, home_adv, rho = _load_ratings()
     if not teams:
         return []
@@ -60,7 +74,8 @@ def simulate_winner(n_sims: int = 20000, blend: float = 0.5) -> list[dict]:
     out = []
     for t, mp in model_p.items():
         name = names.get(t, str(t))
-        mk = market.get(name, 0.0)
+        odds_name = _DB_TO_ODDS.get(name, name)
+        mk = market.get(odds_name, 0.0)
         p = blend * mp + (1 - blend) * mk if market else mp
         out.append({"team_id": t, "team": name, "prob": p})
     s = sum(o["prob"] for o in out) or 1.0

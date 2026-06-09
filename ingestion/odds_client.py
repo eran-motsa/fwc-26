@@ -26,14 +26,14 @@ def get_odds(markets: str = "h2h,totals", regions: str | None = None) -> list[di
 
 
 def get_outrights(regions: str | None = None) -> list[dict]:
-    """Fetch tournament outright markets (winner, etc.)."""
+    """Fetch tournament winner futures from the dedicated futures sport key."""
     params = {
         "apiKey": ODDS_API_KEY,
         "regions": regions or ODDS_REGIONS,
-        "markets": "outrights",
         "oddsFormat": "decimal",
     }
-    url = f"{ODDS_API_BASE}/sports/{ODDS_SPORT_KEY}/odds"
+    # Outrights live under a separate sport key, not the match-odds key.
+    url = f"{ODDS_API_BASE}/sports/soccer_fifa_world_cup_winner/odds"
     resp = httpx.get(url, params=params, timeout=30)
     resp.raise_for_status()
     _log_credits(resp)
