@@ -10,6 +10,7 @@ data/*.err
 
 # ide / tooling
 .claude/
+ui/static/.DS_Store
 
 # python
 __pycache__/
