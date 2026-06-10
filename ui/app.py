@@ -23,6 +23,7 @@ from fastapi.templating import Jinja2Templates
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import TZ_LOCAL, get_db  # noqa: E402
+from model.report import compute_group_standings  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="Mundial 2026 Betting Agent")
@@ -96,6 +97,9 @@ def index():
 def day_view(request: Request, date_local: str):
     dates = _all_dates()
     snap = _snapshot(date_local)
+    conn = get_db()
+    groups = compute_group_standings(conn)
+    conn.close()
     if snap:
         matches = snap["matches"]
         tournament = snap.get("tournament", {})
@@ -109,7 +113,8 @@ def day_view(request: Request, date_local: str):
     next_d = dates[idx + 1] if 0 <= idx < len(dates) - 1 else None
     return templates.TemplateResponse(request, "day.html", {
         "date_local": date_local, "matches": matches,
-        "tournament": tournament, "generated_at": generated_at,
+        "tournament": tournament, "groups": groups,
+        "generated_at": generated_at,
         "prev_d": prev_d, "next_d": next_d, "today": _today(),
         "bets": _bets_for(date_local), "has_snapshot": snap is not None,
     })
@@ -169,6 +174,16 @@ def delete_bet(bet_id: int, date_local: str = Form(...)):
 @app.get("/api/day/{date_local}")
 def api_day(date_local: str):
     return _snapshot(date_local) or {"date_local": date_local, "matches": _fixtures_placeholder(date_local)}
+
+
+@app.get("/table", response_class=HTMLResponse)
+def table_view(request: Request):
+    conn = get_db()
+    groups = compute_group_standings(conn)
+    conn.close()
+    return templates.TemplateResponse(request, "table.html", {
+        "groups": groups, "today": _today(),
+    })
 
 
 # Canonical stage order for display.

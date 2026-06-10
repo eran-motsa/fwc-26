@@ -2,6 +2,21 @@
 {% block title %}{{ date_local }} · FIFA World Cup 2026 Agent{% endblock %}
 {% block nav_today %}active{% endblock %}
 
+{% set FLAGS = {
+  "Mexico": "🇲🇽", "South Africa": "🇿🇦", "South Korea": "🇰🇷", "Czechia": "🇨🇿",
+  "Canada": "🇨🇦", "Bosnia-Herzegovina": "🇧🇦", "Qatar": "🇶🇦", "Switzerland": "🇨🇭",
+  "Brazil": "🇧🇷", "Morocco": "🇲🇦", "Haiti": "🇭🇹", "Scotland": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "United States": "🇺🇸", "Paraguay": "🇵🇾", "Australia": "🇦🇺", "Turkey": "🇹🇷",
+  "Germany": "🇩🇪", "Curaçao": "🇨🇼", "Ivory Coast": "🇨🇮", "Ecuador": "🇪🇨",
+  "Netherlands": "🇳🇱", "Japan": "🇯🇵", "Sweden": "🇸🇪", "Tunisia": "🇹🇳",
+  "Belgium": "🇧🇪", "Egypt": "🇪🇬", "Iran": "🇮🇷", "New Zealand": "🇳🇿",
+  "Spain": "🇪🇸", "Cape Verde Islands": "🇨🇻", "Saudi Arabia": "🇸🇦", "Uruguay": "🇺🇾",
+  "France": "🇫🇷", "Senegal": "🇸🇳", "Iraq": "🇮🇶", "Norway": "🇳🇴",
+  "Argentina": "🇦🇷", "Algeria": "🇩🇿", "Austria": "🇦🇹", "Jordan": "🇯🇴",
+  "Portugal": "🇵🇹", "Congo DR": "🇨🇩", "Uzbekistan": "🇺🇿", "Colombia": "🇨🇴",
+  "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatia": "🇭🇷", "Ghana": "🇬🇭", "Panama": "🇵🇦"
+} %}
+
 {% block content %}
 <div class="daynav">
   <a class="arrow {{ 'disabled' if not prev_d }}" href="{{ '/day/' ~ prev_d if prev_d else '#' }}">‹</a>
@@ -47,6 +62,72 @@
       </ol>
     </div>
   </div>
+  {% endif %}
+
+  {# Inline group standings for groups playing today #}
+  {% if groups and matches %}
+    {% set ns = namespace(day_groups=[]) %}
+    {% for m in matches %}
+      {% if m.stage and 'GROUP_' in m.stage %}
+        {% set g = m.stage.split('GROUP_')[-1] %}
+        {% if g not in ns.day_groups %}
+          {% set ns.day_groups = ns.day_groups + [g] %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+    {% if ns.day_groups %}
+    <div class="group-grid">
+      {% for g in ns.day_groups | sort %}
+        {% if g in groups %}
+        {% set nst = namespace(today_teams=[]) %}
+        {% for m in matches %}
+          {% if m.stage and 'GROUP_' in m.stage and m.stage.split('GROUP_')[-1] == g %}
+            {% set nst.today_teams = nst.today_teams + [m.home, m.away] %}
+          {% endif %}
+        {% endfor %}
+        <div class="group-card">
+          <table class="standings-table">
+            <thead>
+              <tr>
+                <th class="col-rank"></th>
+                <th class="col-flag"></th>
+                <th class="col-team group-label">Group {{ g }}</th>
+                <th class="col-num">P</th><th class="col-num">W</th><th class="col-num">D</th><th class="col-num">L</th>
+                <th class="col-num">GF</th><th class="col-num">GA</th><th class="col-num">GD</th>
+                <th class="col-pts">Pts</th>
+                <th class="col-form">Form</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in groups[g] %}
+              <tr class="{{ 'playing' if row.team in nst.today_teams }}{{ ' qualifying' if loop.index0 < 2 else ' wildcard' if loop.index0 == 2 }}{{ ' played' if row.mp > 0 }}">
+                <td class="col-rank">{{ loop.index }}</td>
+                <td class="col-flag">{{ FLAGS.get(row.team, '') }}</td>
+                <td class="col-team">{{ row.team }}</td>
+                <td class="col-num">{{ row.mp }}</td>
+                <td class="col-num">{{ row.w }}</td>
+                <td class="col-num">{{ row.d }}</td>
+                <td class="col-num">{{ row.l }}</td>
+                <td class="col-num">{{ row.gf }}</td>
+                <td class="col-num">{{ row.ga }}</td>
+                <td class="col-num {{ 'gd-pos' if row.gd > 0 else 'gd-neg' if row.gd < 0 }}">{{ '+' ~ row.gd if row.gd > 0 else row.gd }}</td>
+                <td class="col-pts">{{ row.pts }}</td>
+                <td class="col-form">
+                  {% if row.form %}
+                    {% for r in row.form %}<span class="form-dot {{ r }}">{{ r }}</span>{% endfor %}
+                  {% else %}
+                    {% for _ in range(5) %}<span class="form-dash">—</span>{% endfor %}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
   {% endif %}
 
   {% if not matches %}

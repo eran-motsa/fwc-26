@@ -68,6 +68,72 @@ def _lineups(conn, fx_id: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _group_label(round_str: str) -> str | None:
+    # "Group Stage - GROUP_A" → "A"
+    if "GROUP_" in round_str:
+        return round_str.split("GROUP_")[-1]
+    return None
+
+
+def compute_group_standings(conn) -> dict[str, list[dict]]:
+    all_rows = conn.execute(
+        "SELECT DISTINCT round, home_id, away_id, home_name, away_name "
+        "FROM fixtures WHERE stage='Group Stage'"
+    ).fetchall()
+    groups: dict[str, dict[str, dict]] = {}
+    for row in all_rows:
+        g = _group_label(row["round"])
+        if g is None:
+            continue
+        for name, tid in [(row["home_name"], row["home_id"]), (row["away_name"], row["away_id"])]:
+            groups.setdefault(g, {}).setdefault(
+                name, {"team": name, "team_id": tid, "mp": 0, "w": 0, "d": 0, "l": 0, "gf": 0, "ga": 0}
+            )
+
+    played = conn.execute(
+        "SELECT round, home_id, away_id, home_name, away_name, home_goals, away_goals "
+        "FROM fixtures WHERE stage='Group Stage' AND status='FT' "
+        "AND home_goals IS NOT NULL ORDER BY date_utc DESC"
+    ).fetchall()
+
+    # Build last-5 WC form per team_id (most recent first)
+    team_form: dict[int, list[str]] = {}
+    for row in played:
+        for tid, gf, ga in [
+            (row["home_id"], row["home_goals"], row["away_goals"]),
+            (row["away_id"], row["away_goals"], row["home_goals"]),
+        ]:
+            letters = team_form.setdefault(tid, [])
+            if len(letters) < 5:
+                letters.append("W" if gf > ga else "L" if gf < ga else "D")
+
+    for row in played:
+        g = _group_label(row["round"])
+        if g is None:
+            continue
+        h = groups[g][row["home_name"]]
+        a = groups[g][row["away_name"]]
+        hg, ag = row["home_goals"], row["away_goals"]
+        h["mp"] += 1; a["mp"] += 1
+        h["gf"] += hg; h["ga"] += ag
+        a["gf"] += ag; a["ga"] += hg
+        if hg > ag:
+            h["w"] += 1; a["l"] += 1
+        elif hg < ag:
+            a["w"] += 1; h["l"] += 1
+        else:
+            h["d"] += 1; a["d"] += 1
+
+    result = {}
+    for g, teams in sorted(groups.items()):
+        for t in teams.values():
+            t["gd"] = t["gf"] - t["ga"]
+            t["pts"] = t["w"] * 3 + t["d"]
+            t["form"] = team_form.get(t["team_id"], [])
+        result[g] = sorted(teams.values(), key=lambda x: (-x["pts"], -x["gd"], -x["gf"]))
+    return result
+
+
 def build_day(date_local: str) -> dict:
     conn = get_db()
     fixtures = conn.execute(
@@ -130,11 +196,13 @@ def build_day(date_local: str) -> dict:
 
         matches.append(block)
 
+    groups = compute_group_standings(conn)
     conn.close()
 
     payload = {
         "date_local": date_local,
         "matches": matches,
+        "groups": groups,
         "tournament": {
             "winner": simulate_winner()[:12],
             "golden_boot": golden_boot(),

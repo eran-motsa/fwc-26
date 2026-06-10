@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Group Table · FIFA World Cup 2026 Agent{% endblock %}
+{% block nav_table %}active{% endblock %}
+
+{% set FLAGS = {
+  "Mexico": "🇲🇽", "South Africa": "🇿🇦", "South Korea": "🇰🇷", "Czechia": "🇨🇿",
+  "Canada": "🇨🇦", "Bosnia-Herzegovina": "🇧🇦", "Qatar": "🇶🇦", "Switzerland": "🇨🇭",
+  "Brazil": "🇧🇷", "Morocco": "🇲🇦", "Haiti": "🇭🇹", "Scotland": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "United States": "🇺🇸", "Paraguay": "🇵🇾", "Australia": "🇦🇺", "Turkey": "🇹🇷",
+  "Germany": "🇩🇪", "Curaçao": "🇨🇼", "Ivory Coast": "🇨🇮", "Ecuador": "🇪🇨",
+  "Netherlands": "🇳🇱", "Japan": "🇯🇵", "Sweden": "🇸🇪", "Tunisia": "🇹🇳",
+  "Belgium": "🇧🇪", "Egypt": "🇪🇬", "Iran": "🇮🇷", "New Zealand": "🇳🇿",
+  "Spain": "🇪🇸", "Cape Verde Islands": "🇨🇻", "Saudi Arabia": "🇸🇦", "Uruguay": "🇺🇾",
+  "France": "🇫🇷", "Senegal": "🇸🇳", "Iraq": "🇮🇶", "Norway": "🇳🇴",
+  "Argentina": "🇦🇷", "Algeria": "🇩🇿", "Austria": "🇦🇹", "Jordan": "🇯🇴",
+  "Portugal": "🇵🇹", "Congo DR": "🇨🇩", "Uzbekistan": "🇺🇿", "Colombia": "🇨🇴",
+  "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatia": "🇭🇷", "Ghana": "🇬🇭", "Panama": "🇵🇦"
+} %}
+
+{% block content %}
+<div class="wrap">
+
+  <div class="table-header">
+    <h2>Standings</h2>
+    <div class="season-selector">
+      <span class="lbl">Season</span>
+      <span class="val">2026</span>
+      <span style="color:var(--muted);font-size:10px;margin-left:2px">▼</span>
+    </div>
+  </div>
+
+  <div class="stage-tabs">
+    <span class="stage-tab active">Group Stage</span>
+    <span class="stage-tab" style="opacity:.4;cursor:default;pointer-events:none">Knockout Stage</span>
+  </div>
+
+  {% if groups %}
+  <div class="group-list">
+    {% for group_letter, rows in groups.items() %}
+    <div class="group-card">
+      <table class="standings-table">
+        <thead>
+          <tr>
+            <th class="col-rank"></th>
+            <th class="col-flag"></th>
+            <th class="col-team group-label">Group {{ group_letter }}</th>
+            <th class="col-num">P</th><th class="col-num">W</th><th class="col-num">D</th><th class="col-num">L</th>
+            <th class="col-num">GF</th><th class="col-num">GA</th><th class="col-num">GD</th>
+            <th class="col-pts">Pts</th>
+            <th class="col-form">Form</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr class="{{ 'qualifying' if loop.index0 < 2 else 'wildcard' if loop.index0 == 2 else '' }}{{ ' played' if row.mp > 0 }}">
+            <td class="col-rank">{{ loop.index }}</td>
+            <td class="col-flag">{{ FLAGS.get(row.team, '') }}</td>
+            <td class="col-team">{{ row.team }}</td>
+            <td class="col-num">{{ row.mp }}</td>
+            <td class="col-num">{{ row.w }}</td>
+            <td class="col-num">{{ row.d }}</td>
+            <td class="col-num">{{ row.l }}</td>
+            <td class="col-num">{{ row.gf }}</td>
+            <td class="col-num">{{ row.ga }}</td>
+            <td class="col-num {{ 'gd-pos' if row.gd > 0 else 'gd-neg' if row.gd < 0 }}">{{ '+' ~ row.gd if row.gd > 0 else row.gd }}</td>
+            <td class="col-pts">{{ row.pts }}</td>
+            <td class="col-form">
+              {% if row.form %}
+                {% for r in row.form %}<span class="form-dot {{ r }}">{{ r }}</span>{% endfor %}
+              {% else %}
+                {% for _ in range(5) %}<span class="form-dash">—</span>{% endfor %}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="legend">
+    <span class="leg qualifying"><span class="leg-bar"></span>Advances to Round of 32</span>
+    <span class="leg wildcard"><span class="leg-bar"></span>Potential wildcard (best 3rd-place)</span>
+  </div>
+
+  {% else %}
+  <div class="notice">Group standings will appear here once fixtures are loaded.</div>
+  {% endif %}
+
+</div>
+{% endblock %}
