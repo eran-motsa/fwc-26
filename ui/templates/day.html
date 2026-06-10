@@ -137,7 +137,7 @@
   {% for m in matches %}
   <div class="match {{ 'placeholder' if not m.model }}">
     <div class="match-head">
-      <div class="teams">{{ m.home }} <span style="color:var(--muted)">vs</span> {{ m.away }}</div>
+      <div class="teams">{{ FLAGS.get(m.home, '') }} {{ m.home }} <span style="color:var(--muted)">vs</span> {{ FLAGS.get(m.away, '') }} {{ m.away }}</div>
       <div class="meta">
         {% if m.stage %}<span class="stage">{{ m.stage }}</span><br>{% endif %}
         {{ m.kickoff_local or '' }} {% if m.venue %}· {{ m.venue }}{% endif %}<br>
