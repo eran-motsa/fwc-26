@@ -57,32 +57,36 @@ a:hover { text-decoration: underline; }
 
 /* ── Day navigation ────────────────────────────────────────────── */
 .daynav {
-  display: flex; align-items: center; justify-content: center; gap: 32px;
-  padding: 24px 20px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 28px; border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(212,175,55,0.05), transparent);
+  max-width: 1080px; margin: 0 auto; width: 100%;
 }
 .daynav-date {
-  text-align: center; min-width: 200px;
+  text-align: center;
 }
 .daynav-date .date-main {
-  font-family: var(--font-display); font-size: 30px; font-weight: 800;
+  font-family: var(--font-display); font-size: 28px; font-weight: 800;
   letter-spacing: 2px; color: var(--white);
 }
 .daynav-date .date-day {
   font-size: 11px; color: var(--muted); text-transform: uppercase;
   letter-spacing: 2.5px; margin-top: 4px;
 }
-.daynav .arrow {
-  width: 44px; height: 44px; display: grid; place-items: center;
-  border: 1px solid var(--line); border-radius: 12px;
-  background: var(--panel); color: var(--white);
-  font-size: 22px; transition: border-color 0.15s, color 0.15s, background 0.15s;
+.daynav-btn {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--muted); padding: 8px 14px; border-radius: 10px;
+  min-width: 110px; transition: color 0.15s, background 0.15s;
 }
-.daynav .arrow:hover {
-  border-color: var(--gold); color: var(--gold);
-  background: rgba(212,175,55,0.08); text-decoration: none;
+.daynav-btn.prev { justify-content: flex-start; }
+.daynav-btn.next { justify-content: flex-end; }
+.daynav-btn:hover { color: var(--gold); background: rgba(212,175,55,0.07); text-decoration: none; }
+.daynav-btn.disabled { opacity: .25; pointer-events: none; }
+.daynav-btn .daynav-arrow { font-size: 20px; line-height: 1; }
+.daynav-btn .daynav-label {
+  font-family: var(--font-display); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.5px; white-space: nowrap;
 }
-.daynav .arrow.disabled { opacity: .25; pointer-events: none; }
 
 .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px; }
 

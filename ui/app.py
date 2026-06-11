@@ -48,8 +48,20 @@ def _weekday(iso: str) -> str:
     return ""
 
 
+_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+
+def _fmt_short(iso: str) -> str:
+    """yyyy-mm-dd → '10 Jun' for compact nav labels."""
+    if iso and len(iso) >= 10:
+        _, m, d = iso[:10].split("-")
+        return f"{int(d)} {_MONTHS[int(m)-1]}"
+    return ""
+
+
 templates.env.filters["fmtdate"] = _fmt_date
 templates.env.filters["weekday"] = _weekday
+templates.env.filters["fmtshort"] = _fmt_short
 
 
 def _today() -> str:

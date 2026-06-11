@@ -19,12 +19,18 @@
 
 {% block content %}
 <div class="daynav">
-  <a class="arrow {{ 'disabled' if not prev_d }}" href="{{ '/day/' ~ prev_d if prev_d else '#' }}">‹</a>
+  <a class="daynav-btn prev {{ 'disabled' if not prev_d }}" href="{{ '/day/' ~ prev_d if prev_d else '#' }}">
+    <span class="daynav-arrow">←</span>
+    <span class="daynav-label">{{ prev_d | fmtshort if prev_d else '' }}</span>
+  </a>
   <div class="daynav-date">
     <div class="date-main">{{ date_local | fmtdate }}</div>
     <div class="date-day">{{ date_local | weekday }}</div>
   </div>
-  <a class="arrow {{ 'disabled' if not next_d }}" href="{{ '/day/' ~ next_d if next_d else '#' }}">›</a>
+  <a class="daynav-btn next {{ 'disabled' if not next_d }}" href="{{ '/day/' ~ next_d if next_d else '#' }}">
+    <span class="daynav-label">{{ next_d | fmtshort if next_d else '' }}</span>
+    <span class="daynav-arrow">→</span>
+  </a>
 </div>
 
 <div class="wrap">
