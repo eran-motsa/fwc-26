@@ -29,8 +29,9 @@ ODDS_SPORT_KEY = "soccer_fifa_world_cup"
 def get_db() -> sqlite3.Connection:
     """Open the SQLite database with row access by column name."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 

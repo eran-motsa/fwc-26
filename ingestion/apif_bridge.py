@@ -92,6 +92,7 @@ def sync_lineups(date_local: str) -> int:
                 "UPDATE teams SET apif_id=? WHERE LOWER(name)=? AND apif_id IS NULL",
                 (apif_team_id, _norm(fd_team_name)),
             )
+        conn.commit()  # release write lock before API call opens a second connection
 
         lineup_data = apif_get("fixtures/lineups", {"fixture": apif_id})
         for team_block in lineup_data.get("response", []):
