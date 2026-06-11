@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -12,11 +12,15 @@ from model import predict, ratings, report  # noqa: E402
 
 
 def main() -> None:
-    today = datetime.now(ZoneInfo(TZ_LOCAL)).date().isoformat()
+    now = datetime.now(ZoneInfo(TZ_LOCAL))
+    today = now.date().isoformat()
+    tomorrow = (now.date() + timedelta(days=1)).isoformat()
     print(f"=== Model + report for {today} ===")
     ratings.run()
     predict.predict_day(today)
     report.save_day(today)
+    predict.predict_day(tomorrow)
+    report.save_day(tomorrow)
     print("Report complete.")
 
 

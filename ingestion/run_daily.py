@@ -9,7 +9,7 @@ Data sources:
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -20,13 +20,17 @@ from ingestion import apif_bridge, fixtures, injuries, odds  # noqa: E402
 
 def main() -> None:
     require_keys()
-    today = datetime.now(ZoneInfo(TZ_LOCAL)).strftime("%Y-%m-%d")
+    now = datetime.now(ZoneInfo(TZ_LOCAL))
+    today = now.strftime("%Y-%m-%d")
+    tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
     print(f"=== Ingestion for {today} ===")
     fixtures.sync_fixtures()                # refresh schedule + results (football-data.org)
     injuries.sync_injuries(today)           # no-op — no free source
     apif_bridge.sync_lineups(today)         # starting XIs via API-Football free date feed
     apif_bridge.sync_h2h_for_day(today)     # H2H for today's matches (cached, ~N calls)
+    apif_bridge.sync_h2h_for_day(tomorrow)  # H2H for tomorrow so bets can be placed tonight
     odds.sync_match_odds(today)
+    odds.sync_match_odds(tomorrow)          # tomorrow's odds available tonight
     odds.sync_outrights()
     print("Ingestion complete.")
 

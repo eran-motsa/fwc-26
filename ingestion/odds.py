@@ -15,8 +15,20 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Odds API team names → football-data.org names used in our DB
+_ODDS_TO_FD: dict[str, str] = {
+    "Czech Republic":       "Czechia",
+    "Bosnia & Herzegovina": "Bosnia-Herzegovina",
+    "USA":                  "United States",
+    "DR Congo":             "Congo DR",
+    "Cape Verde":           "Cape Verde Islands",
+}
+
+
 def _match_fixture(home: str, away: str, date_local: str | None) -> int | None:
     """Map an Odds-API event (team names) to our fixture id by name match."""
+    home = _ODDS_TO_FD.get(home, home)
+    away = _ODDS_TO_FD.get(away, away)
     conn = get_db()
     q = ("SELECT id FROM fixtures WHERE "
          "LOWER(home_name)=LOWER(?) AND LOWER(away_name)=LOWER(?)")

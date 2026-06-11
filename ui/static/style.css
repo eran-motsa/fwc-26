@@ -157,6 +157,10 @@ a:hover { text-decoration: underline; }
 .prob .val { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
 .prob.edge-pos { border-color: var(--win); }
 .prob.edge-pos .val { color: var(--win); }
+.edge-legend {
+  font-size: 10px; color: var(--muted); font-weight: 400;
+  letter-spacing: 0; text-transform: none; margin-left: 6px;
+}
 
 .kv { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; color: var(--muted); }
 .kv b { color: var(--white); font-variant-numeric: tabular-nums; }
