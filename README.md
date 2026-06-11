@@ -1,4 +1,4 @@
-# Mundial 2026 Betting Agent
+# FIFA World Cup 2026 Betting Agent
 
 A fully local agent for the FIFA World Cup 2026 betting pool with friends. It ingests
 fixtures, injuries, lineups and bookmaker odds daily, runs a Dixon-Coles statistical model,
@@ -29,9 +29,10 @@ the highest expected points: `EP = P(direction)·odds·mult + P(exact)·bonus`.
 
 ## Setup (one command)
 
-1. Get two free API keys:
-   - **api-football.com** (direct, not RapidAPI) — fixtures, injuries, lineups
-   - **the-odds-api.com** — bookmaker odds
+1. Get three free API keys:
+   - **api-football.com** (direct, not RapidAPI) — fixtures, lineups, H2H history
+   - **the-odds-api.com** — bookmaker match odds and outright winner/golden boot odds
+   - **football-data.org** — fixture schedule and live results (free tier, WC coverage)
 2. Configure and run:
    ```bash
    cp .env.example .env      # paste both keys
