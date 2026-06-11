@@ -24,11 +24,32 @@ from fastapi.templating import Jinja2Templates
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import TZ_LOCAL, get_db  # noqa: E402
 from model.report import compute_group_standings  # noqa: E402
+from model.tournament import golden_boot, simulate_winner  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="Mundial 2026 Betting Agent")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 templates = Jinja2Templates(directory=ROOT / "templates")
+
+
+def _fmt_date(iso: str) -> str:
+    """yyyy-mm-dd → dd-mm-yyyy (display only; URLs stay ISO)."""
+    if iso and len(iso) >= 10:
+        y, m, d = iso[:10].split("-")
+        return f"{d}-{m}-{y}"
+    return iso or ""
+
+
+def _weekday(iso: str) -> str:
+    """yyyy-mm-dd → full weekday name."""
+    if iso and len(iso) >= 10:
+        from datetime import date as _date
+        return _date.fromisoformat(iso[:10]).strftime("%A")
+    return ""
+
+
+templates.env.filters["fmtdate"] = _fmt_date
+templates.env.filters["weekday"] = _weekday
 
 
 def _today() -> str:
@@ -183,6 +204,15 @@ def table_view(request: Request):
     conn.close()
     return templates.TemplateResponse(request, "table.html", {
         "groups": groups, "today": _today(),
+    })
+
+
+@app.get("/trophy", response_class=HTMLResponse)
+def trophy_view(request: Request):
+    return templates.TemplateResponse(request, "trophy.html", {
+        "winner": simulate_winner()[:12],
+        "golden_boot": golden_boot(),
+        "today": _today(),
     })
 
 

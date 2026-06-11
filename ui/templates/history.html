@@ -15,7 +15,7 @@
     <tr><th>Date</th><th>Pick</th><th>Result</th><th>Points</th><th>Notes</th></tr>
     {% for b in bets %}
     <tr>
-      <td><a href="/day/{{ b.date_local }}">{{ b.date_local }}</a></td>
+      <td><a href="/day/{{ b.date_local }}">{{ b.date_local | fmtdate }}</a></td>
       <td>{{ b.selection }}</td>
       <td><span class="tag {{ b.result }}">{{ b.result.replace('_',' ') }}</span></td>
       <td>{{ b.points_awarded if b.points_awarded is not none else '—' }}</td>
@@ -31,8 +31,8 @@
     <tr><th>Date</th><th>Generated</th><th></th></tr>
     {% for d in days %}
     <tr>
-      <td>{{ d.date_local }}</td>
-      <td style="color:var(--muted)">{{ d.generated_at }}</td>
+      <td>{{ d.date_local | fmtdate }}</td>
+      <td style="color:var(--muted)">{{ d.generated_at[:10] | fmtdate }}</td>
       <td><a href="/day/{{ d.date_local }}">view →</a></td>
     </tr>
     {% else %}
