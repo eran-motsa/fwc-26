@@ -17,6 +17,185 @@
   "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatia": "🇭🇷", "Ghana": "🇬🇭", "Panama": "🇵🇦"
 } %}
 
+{# ── Match card macro ──────────────────────────────────────────────── #}
+{% macro render_match(m, bets, date_local, FLAGS) %}
+<div class="match {{ 'placeholder' if not m.model }}">
+  <div class="match-head">
+    <div class="teams">{{ FLAGS.get(m.home, '') }} {{ m.home }} <span style="color:var(--muted)">vs</span> {{ FLAGS.get(m.away, '') }} {{ m.away }}</div>
+    <div class="meta">
+      {% if m.stage %}<span class="stage">{{ m.stage }}</span><br>{% endif %}
+      {{ m.kickoff_local or '' }} {% if m.venue %}· {{ m.venue }}{% endif %}<br>
+      {% if m.status == 'FT' and m.home_goals is not none %}
+        <span class="score-final">{{ m.home_goals }}–{{ m.away_goals }} FT</span>
+      {% else %}{{ m.status or 'Scheduled' }}{% endif %}
+    </div>
+  </div>
+
+  <div class="match-body">
+    <div class="cell">
+      <h4>Model</h4>
+      {% if m.model %}
+      <div class="probrow">
+        {% set v = m.value or {} %}
+        <div class="prob {{ 'edge-pos' if v.home and v.home>0.03 }}"
+             data-tip="Home win probability from our Dixon-Coles model. Green border = model gives &gt;3% more chance than bookmaker — potential value bet.">
+          <div class="lbl">1</div><div class="val">{{ (m.model.p_home*100)|round }}%</div></div>
+        <div class="prob {{ 'edge-pos' if v.draw and v.draw>0.03 }}"
+             data-tip="Draw probability from our model. Green border = model sees more draw chance than bookmaker consensus.">
+          <div class="lbl">X</div><div class="val">{{ (m.model.p_draw*100)|round }}%</div></div>
+        <div class="prob {{ 'edge-pos' if v.away and v.away>0.03 }}"
+             data-tip="Away win probability from our model. Green border = model gives &gt;3% more chance than bookmaker — potential value bet.">
+          <div class="lbl">2</div><div class="val">{{ (m.model.p_away*100)|round }}%</div></div>
+      </div>
+      <div class="kv"><span data-tip="Average goals each team is projected to score. Derived from the Dixon-Coles Poisson model using attack/defence ratings.">Expected goals</span><b>{{ m.model.exp_home_goals }} – {{ m.model.exp_away_goals }}</b></div>
+      <div class="kv"><span data-tip="The single scoreline with the highest probability under the model. Not always the same as the recommended bet.">Most likely score</span><b>{{ m.model.top_scoreline }}</b></div>
+      <div class="kv"><span data-tip="Probability the match ends with 3 or more total goals combined.">Over 2.5</span><b>{{ (m.model.over25*100)|round }}%</b></div>
+      <div class="kv"><span data-tip="Probability both teams score at least once (BTTS market).">Both teams score</span><b>{{ (m.model.btts*100)|round }}%</b></div>
+      {% else %}
+      <div class="kv"><span>Awaiting daily computation</span></div>
+      {% endif %}
+    </div>
+
+    <div class="cell">
+      <h4>Bookmaker Consensus</h4>
+      {% if m.consensus %}
+      <div class="probrow">
+        <div class="prob" data-tip="Bookmaker-implied home win probability, averaged across all books with the overround (vig) removed."><div class="lbl">1</div><div class="val">{{ (m.consensus.cp_home*100)|round }}%</div></div>
+        <div class="prob" data-tip="Bookmaker-implied draw probability, vig-free consensus across all books."><div class="lbl">X</div><div class="val">{{ (m.consensus.cp_draw*100)|round }}%</div></div>
+        <div class="prob" data-tip="Bookmaker-implied away win probability, averaged across all books with vig removed."><div class="lbl">2</div><div class="val">{{ (m.consensus.cp_away*100)|round }}%</div></div>
+      </div>
+      <div class="kv"><span data-tip="True decimal odds with the bookmaker margin stripped out. If you can bet at higher odds than these, you have a positive expected value edge.">Fair odds (1 / X / 2)</span><b>{{ m.consensus.fair_home }} / {{ m.consensus.fair_draw }} / {{ m.consensus.fair_away }}</b></div>
+      <div class="kv"><span data-tip="Number of bookmakers contributing to this consensus. More books = more reliable average.">Books in consensus</span><b>{{ m.consensus.n_books }}</b></div>
+      {% else %}
+      <div class="kv"><span>Odds load on match day</span></div>
+      {% endif %}
+      <div class="kv"><span data-tip="Last 5 results for each team (W=win, D=draw, L=loss), most recent on the right. Strong form may indicate momentum not fully captured by ratings.">Form (home / away)</span>
+        <b><span class="form">{% for c in m.form_home %}<span class="{{c}}">{{c}}</span>{% endfor %}</span>
+           / <span class="form">{% for c in m.form_away %}<span class="{{c}}">{{c}}</span>{% endfor %}</span></b></div>
+      {% if m.injuries %}
+      <div class="injuries">Out: {% for i in m.injuries %}<span>{{ i.player }}</span>{{ ", " if not loop.last }}{% endfor %}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if m.h2h %}
+  <div class="h2h">
+    <h4>Head-to-Head (last {{ m.h2h|length }} meetings)</h4>
+    {% for r in m.h2h %}
+    <div class="h2h-row">
+      <span class="h2h-date">{{ r.date }}</span>
+      <span class="h2h-teams">{{ r.home }} <b>{{ r.home_goals }}–{{ r.away_goals }}</b> {{ r.away }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if m.recommended_bet %}
+  {% set rb = m.recommended_bet %}
+  <div class="rec">
+    <h4 data-tip="The scoreline that maximises expected league points. Formula: EP = P(direction) × odds × stage_bonus + P(exact) × exact_bonus. Top 5 alternatives shown below.">Recommended Bet (maximises league points)</h4>
+    <div class="pick">{{ rb.best.scoreline }}
+      <span class="ep">→ {{ rb.best.expected_points }} expected pts
+      (bonus {{ rb.stage_bonus }}, dir odds {{ rb.best.direction_odds }})</span></div>
+    <table>
+      <tr><th>Score</th><th>Dir</th><th>P(exact)</th><th>Dir odds</th><th>Exp pts</th></tr>
+      {% for r in rb.top5 %}
+      <tr><td>{{ r.scoreline }}</td><td>{{ r.direction }}</td>
+        <td>{{ (r.p_exact*100)|round(1) }}%</td><td>{{ r.direction_odds }}</td>
+        <td>{{ r.expected_points }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  <form class="betform" method="post" action="/bets">
+    <input type="hidden" name="date_local" value="{{ date_local }}">
+    <input type="hidden" name="fixture_id" value="{{ m.fixture_id }}">
+    {% if m.recommended_bet %}
+    <input type="hidden" name="odds_taken" value="{{ m.recommended_bet.best.direction_odds }}">
+    <input type="hidden" name="stage_bonus" value="{{ m.recommended_bet.stage_bonus }}">
+    {% endif %}
+    <span>My bet:</span>
+    <input type="number" name="predicted_home" min="0" max="9" value="{{ m.recommended_bet.best.h if m.recommended_bet else 1 }}">
+    <span class="sep">–</span>
+    <input type="number" name="predicted_away" min="0" max="9" value="{{ m.recommended_bet.best.a if m.recommended_bet else 0 }}">
+    <input type="text" name="notes" placeholder="notes (optional)">
+    <button class="btn" type="submit">Add bet</button>
+  </form>
+
+  {% set mb = bets | selectattr('fixture_id', 'equalto', m.fixture_id) | list %}
+  {% if mb %}
+  <div class="mybets">
+    {% for b in mb %}
+    <div class="bet">
+      <b>{{ b.selection }}</b>
+      <span class="tag {{ b.result }}">{{ b.result.replace('_',' ') }}</span>
+      {% if b.points_awarded is not none %}<span>{{ b.points_awarded }} pts</span>{% endif %}
+      {% if b.notes %}<span style="color:var(--muted)">{{ b.notes }}</span>{% endif %}
+      <form method="post" action="/bets/{{ b.id }}/delete" style="margin-left:auto">
+        <input type="hidden" name="date_local" value="{{ date_local }}">
+        <button class="btn btn-ghost" type="submit">remove</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Group table macro ─────────────────────────────────────────────── #}
+{% macro render_group_table(g, groups, matches, FLAGS) %}
+{% if g in groups %}
+{% set nst = namespace(today_teams=[]) %}
+{% for m in matches %}
+  {% if m.stage and 'GROUP_' in m.stage and m.stage.split('GROUP_')[-1] == g %}
+    {% set nst.today_teams = nst.today_teams + [m.home, m.away] %}
+  {% endif %}
+{% endfor %}
+<div class="group-grid">
+  <div class="group-card">
+    <table class="standings-table">
+      <thead>
+        <tr>
+          <th class="col-rank"></th>
+          <th class="col-flag"></th>
+          <th class="col-team group-label">Group {{ g }}</th>
+          <th class="col-num">P</th><th class="col-num">W</th><th class="col-num">D</th><th class="col-num">L</th>
+          <th class="col-num">GF</th><th class="col-num">GA</th><th class="col-num">GD</th>
+          <th class="col-pts">Pts</th>
+          <th class="col-form">Form</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in groups[g] %}
+        <tr class="{{ 'playing' if row.team in nst.today_teams }}{{ ' qualifying' if loop.index0 < 2 else ' wildcard' if loop.index0 == 2 }}{{ ' played' if row.mp > 0 }}">
+          <td class="col-rank">{{ loop.index }}</td>
+          <td class="col-flag">{{ FLAGS.get(row.team, '') }}</td>
+          <td class="col-team">{{ row.team }}</td>
+          <td class="col-num">{{ row.mp }}</td>
+          <td class="col-num">{{ row.w }}</td>
+          <td class="col-num">{{ row.d }}</td>
+          <td class="col-num">{{ row.l }}</td>
+          <td class="col-num">{{ row.gf }}</td>
+          <td class="col-num">{{ row.ga }}</td>
+          <td class="col-num {{ 'gd-pos' if row.gd > 0 else 'gd-neg' if row.gd < 0 }}">{{ '+' ~ row.gd if row.gd > 0 else row.gd }}</td>
+          <td class="col-pts">{{ row.pts }}</td>
+          <td class="col-form">
+            {% if row.form %}
+              {% for r in row.form %}<span class="form-dot {{ r }}">{{ r }}</span>{% endfor %}
+            {% else %}
+              {% for _ in range(5) %}<span class="form-dash">—</span>{% endfor %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="daynav">
   <a class="daynav-btn prev {{ 'disabled' if not prev_d }}" href="{{ '/day/' ~ prev_d if prev_d else '#' }}">
@@ -43,201 +222,39 @@
   </div>
   {% endif %}
 
-
-  {# Inline group standings for groups playing today #}
-  {% if groups and matches %}
-    {% set ns = namespace(day_groups=[]) %}
-    {% for m in matches %}
-      {% if m.stage and 'GROUP_' in m.stage %}
-        {% set g = m.stage.split('GROUP_')[-1] %}
-        {% if g not in ns.day_groups %}
-          {% set ns.day_groups = ns.day_groups + [g] %}
-        {% endif %}
-      {% endif %}
-    {% endfor %}
-    {% if ns.day_groups %}
-    <div class="group-grid">
-      {% for g in ns.day_groups | sort %}
-        {% if g in groups %}
-        {% set nst = namespace(today_teams=[]) %}
-        {% for m in matches %}
-          {% if m.stage and 'GROUP_' in m.stage and m.stage.split('GROUP_')[-1] == g %}
-            {% set nst.today_teams = nst.today_teams + [m.home, m.away] %}
-          {% endif %}
-        {% endfor %}
-        <div class="group-card">
-          <table class="standings-table">
-            <thead>
-              <tr>
-                <th class="col-rank"></th>
-                <th class="col-flag"></th>
-                <th class="col-team group-label">Group {{ g }}</th>
-                <th class="col-num">P</th><th class="col-num">W</th><th class="col-num">D</th><th class="col-num">L</th>
-                <th class="col-num">GF</th><th class="col-num">GA</th><th class="col-num">GD</th>
-                <th class="col-pts">Pts</th>
-                <th class="col-form">Form</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in groups[g] %}
-              <tr class="{{ 'playing' if row.team in nst.today_teams }}{{ ' qualifying' if loop.index0 < 2 else ' wildcard' if loop.index0 == 2 }}{{ ' played' if row.mp > 0 }}">
-                <td class="col-rank">{{ loop.index }}</td>
-                <td class="col-flag">{{ FLAGS.get(row.team, '') }}</td>
-                <td class="col-team">{{ row.team }}</td>
-                <td class="col-num">{{ row.mp }}</td>
-                <td class="col-num">{{ row.w }}</td>
-                <td class="col-num">{{ row.d }}</td>
-                <td class="col-num">{{ row.l }}</td>
-                <td class="col-num">{{ row.gf }}</td>
-                <td class="col-num">{{ row.ga }}</td>
-                <td class="col-num {{ 'gd-pos' if row.gd > 0 else 'gd-neg' if row.gd < 0 }}">{{ '+' ~ row.gd if row.gd > 0 else row.gd }}</td>
-                <td class="col-pts">{{ row.pts }}</td>
-                <td class="col-form">
-                  {% if row.form %}
-                    {% for r in row.form %}<span class="form-dot {{ r }}">{{ r }}</span>{% endfor %}
-                  {% else %}
-                    {% for _ in range(5) %}<span class="form-dash">—</span>{% endfor %}
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
-  {% endif %}
-
   {% if not matches %}
     <div class="notice">No matches scheduled on this date.</div>
   {% endif %}
 
+  {# Collect group letters in the order they first appear in today's matches #}
+  {% set ns = namespace(seen_groups=[]) %}
   {% for m in matches %}
-  <div class="match {{ 'placeholder' if not m.model }}">
-    <div class="match-head">
-      <div class="teams">{{ FLAGS.get(m.home, '') }} {{ m.home }} <span style="color:var(--muted)">vs</span> {{ FLAGS.get(m.away, '') }} {{ m.away }}</div>
-      <div class="meta">
-        {% if m.stage %}<span class="stage">{{ m.stage }}</span><br>{% endif %}
-        {{ m.kickoff_local or '' }} {% if m.venue %}· {{ m.venue }}{% endif %}<br>
-        {% if m.status == 'FT' and m.home_goals is not none %}
-          <span class="score-final">{{ m.home_goals }}–{{ m.away_goals }} FT</span>
-        {% else %}{{ m.status or 'Scheduled' }}{% endif %}
-      </div>
-    </div>
-
-    <div class="match-body">
-      <div class="cell">
-        <h4>Model</h4>
-        {% if m.model %}
-        <div class="probrow">
-          {% set v = m.value or {} %}
-          <div class="prob {{ 'edge-pos' if v.home and v.home>0.03 }}"
-               data-tip="Home win probability from our Dixon-Coles model. Green border = model gives &gt;3% more chance than bookmaker — potential value bet.">
-            <div class="lbl">1</div><div class="val">{{ (m.model.p_home*100)|round }}%</div></div>
-          <div class="prob {{ 'edge-pos' if v.draw and v.draw>0.03 }}"
-               data-tip="Draw probability from our model. Green border = model sees more draw chance than bookmaker consensus.">
-            <div class="lbl">X</div><div class="val">{{ (m.model.p_draw*100)|round }}%</div></div>
-          <div class="prob {{ 'edge-pos' if v.away and v.away>0.03 }}"
-               data-tip="Away win probability from our model. Green border = model gives &gt;3% more chance than bookmaker — potential value bet.">
-            <div class="lbl">2</div><div class="val">{{ (m.model.p_away*100)|round }}%</div></div>
-        </div>
-        <div class="kv"><span data-tip="Average goals each team is projected to score. Derived from the Dixon-Coles Poisson model using attack/defence ratings.">Expected goals</span><b>{{ m.model.exp_home_goals }} – {{ m.model.exp_away_goals }}</b></div>
-        <div class="kv"><span data-tip="The single scoreline with the highest probability under the model. Not always the same as the recommended bet.">Most likely score</span><b>{{ m.model.top_scoreline }}</b></div>
-        <div class="kv"><span data-tip="Probability the match ends with 3 or more total goals combined.">Over 2.5</span><b>{{ (m.model.over25*100)|round }}%</b></div>
-        <div class="kv"><span data-tip="Probability both teams score at least once (BTTS market).">Both teams score</span><b>{{ (m.model.btts*100)|round }}%</b></div>
-        {% else %}
-        <div class="kv"><span>Awaiting daily computation</span></div>
-        {% endif %}
-      </div>
-
-      <div class="cell">
-        <h4>Bookmaker Consensus</h4>
-        {% if m.consensus %}
-        <div class="probrow">
-          <div class="prob" data-tip="Bookmaker-implied home win probability, averaged across all books with the overround (vig) removed."><div class="lbl">1</div><div class="val">{{ (m.consensus.cp_home*100)|round }}%</div></div>
-          <div class="prob" data-tip="Bookmaker-implied draw probability, vig-free consensus across all books."><div class="lbl">X</div><div class="val">{{ (m.consensus.cp_draw*100)|round }}%</div></div>
-          <div class="prob" data-tip="Bookmaker-implied away win probability, averaged across all books with vig removed."><div class="lbl">2</div><div class="val">{{ (m.consensus.cp_away*100)|round }}%</div></div>
-        </div>
-        <div class="kv"><span data-tip="True decimal odds with the bookmaker margin stripped out. If you can bet at higher odds than these, you have a positive expected value edge.">Fair odds (1 / X / 2)</span><b>{{ m.consensus.fair_home }} / {{ m.consensus.fair_draw }} / {{ m.consensus.fair_away }}</b></div>
-        <div class="kv"><span data-tip="Number of bookmakers contributing to this consensus. More books = more reliable average.">Books in consensus</span><b>{{ m.consensus.n_books }}</b></div>
-        {% else %}
-        <div class="kv"><span>Odds load on match day</span></div>
-        {% endif %}
-        <div class="kv"><span data-tip="Last 5 results for each team (W=win, D=draw, L=loss), most recent on the right. Strong form may indicate momentum not fully captured by ratings.">Form (home / away)</span>
-          <b><span class="form">{% for c in m.form_home %}<span class="{{c}}">{{c}}</span>{% endfor %}</span>
-             / <span class="form">{% for c in m.form_away %}<span class="{{c}}">{{c}}</span>{% endfor %}</span></b></div>
-        {% if m.injuries %}
-        <div class="injuries">Out: {% for i in m.injuries %}<span>{{ i.player }}</span>{{ ", " if not loop.last }}{% endfor %}</div>
-        {% endif %}
-      </div>
-    </div>
-
-    {% if m.h2h %}
-    <div class="h2h">
-      <h4>Head-to-Head (last {{ m.h2h|length }} meetings)</h4>
-      {% for r in m.h2h %}
-      <div class="h2h-row">
-        <span class="h2h-date">{{ r.date }}</span>
-        <span class="h2h-teams">{{ r.home }} <b>{{ r.home_goals }}–{{ r.away_goals }}</b> {{ r.away }}</span>
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if m.recommended_bet %}
-    {% set rb = m.recommended_bet %}
-    <div class="rec">
-      <h4 data-tip="The scoreline that maximises expected league points. Formula: EP = P(direction) × odds × stage_bonus + P(exact) × exact_bonus. Top 5 alternatives shown below.">Recommended Bet (maximises league points)</h4>
-      <div class="pick">{{ rb.best.scoreline }}
-        <span class="ep">→ {{ rb.best.expected_points }} expected pts
-        (bonus {{ rb.stage_bonus }}, dir odds {{ rb.best.direction_odds }})</span></div>
-      <table>
-        <tr><th>Score</th><th>Dir</th><th>P(exact)</th><th>Dir odds</th><th>Exp pts</th></tr>
-        {% for r in rb.top5 %}
-        <tr><td>{{ r.scoreline }}</td><td>{{ r.direction }}</td>
-          <td>{{ (r.p_exact*100)|round(1) }}%</td><td>{{ r.direction_odds }}</td>
-          <td>{{ r.expected_points }}</td></tr>
-        {% endfor %}
-      </table>
-    </div>
-    {% endif %}
-
-    <!-- Add bet -->
-    <form class="betform" method="post" action="/bets">
-      <input type="hidden" name="date_local" value="{{ date_local }}">
-      <input type="hidden" name="fixture_id" value="{{ m.fixture_id }}">
-      {% if m.recommended_bet %}
-      <input type="hidden" name="odds_taken" value="{{ m.recommended_bet.best.direction_odds }}">
-      <input type="hidden" name="stage_bonus" value="{{ m.recommended_bet.stage_bonus }}">
+    {% if m.stage and 'GROUP_' in m.stage %}
+      {% set g = m.stage.split('GROUP_')[-1] %}
+      {% if g not in ns.seen_groups %}
+        {% set ns.seen_groups = ns.seen_groups + [g] %}
       {% endif %}
-      <span>My bet:</span>
-      <input type="number" name="predicted_home" min="0" max="9" value="{{ m.recommended_bet.best.h if m.recommended_bet else 1 }}">
-      <span class="sep">–</span>
-      <input type="number" name="predicted_away" min="0" max="9" value="{{ m.recommended_bet.best.a if m.recommended_bet else 0 }}">
-      <input type="text" name="notes" placeholder="notes (optional)">
-      <button class="btn" type="submit">Add bet</button>
-    </form>
-
-    {% set mb = bets | selectattr('fixture_id', 'equalto', m.fixture_id) | list %}
-    {% if mb %}
-    <div class="mybets">
-      {% for b in mb %}
-      <div class="bet">
-        <b>{{ b.selection }}</b>
-        <span class="tag {{ b.result }}">{{ b.result.replace('_',' ') }}</span>
-        {% if b.points_awarded is not none %}<span>{{ b.points_awarded }} pts</span>{% endif %}
-        {% if b.notes %}<span style="color:var(--muted)">{{ b.notes }}</span>{% endif %}
-        <form method="post" action="/bets/{{ b.id }}/delete" style="margin-left:auto">
-          <input type="hidden" name="date_local" value="{{ date_local }}">
-          <button class="btn btn-ghost" type="submit">remove</button>
-        </form>
-      </div>
-      {% endfor %}
-    </div>
     {% endif %}
-  </div>
   {% endfor %}
+
+  {# Group-stage sections: matches first, then the group table #}
+  {% for g in ns.seen_groups %}
+    {% for m in matches %}
+      {% if m.stage and 'GROUP_' in m.stage and m.stage.split('GROUP_')[-1] == g %}
+        {{ render_match(m, bets, date_local, FLAGS) }}
+      {% endif %}
+    {% endfor %}
+    {% if groups %}
+      {{ render_group_table(g, groups, matches, FLAGS) }}
+    {% endif %}
+  {% endfor %}
+
+  {# Knockout / non-group matches #}
+  {% for m in matches %}
+    {% if not m.stage or 'GROUP_' not in m.stage %}
+      {{ render_match(m, bets, date_local, FLAGS) }}
+    {% endif %}
+  {% endfor %}
+
 </div>
 {% endblock %}
