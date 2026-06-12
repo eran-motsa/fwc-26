@@ -165,7 +165,11 @@ a:hover { text-decoration: underline; }
   font-family: var(--font-body); letter-spacing: 0; text-transform: none;
   margin-left: 7px; vertical-align: middle; cursor: help;
 }
-.edge-hint[data-tip]::after { width: 280px; left: auto; right: 0; }
+.edge-hint[data-tip]::after {
+  width: 280px;
+  bottom: auto; top: calc(100% + 8px);
+  left: 0; right: auto;
+}
 
 .kv { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; color: var(--muted); }
 .kv b { color: var(--white); font-variant-numeric: tabular-nums; }

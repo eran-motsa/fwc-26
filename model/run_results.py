@@ -56,10 +56,13 @@ def settle(date_local: str) -> int:
 
 def main() -> None:
     require_keys()
-    yesterday = (datetime.now(ZoneInfo(TZ_LOCAL)) - timedelta(days=1)).date().isoformat()
-    print(f"=== Results + settlement for {yesterday} ===")
+    now = datetime.now(ZoneInfo(TZ_LOCAL))
+    yesterday = (now - timedelta(days=1)).date().isoformat()
+    today = now.date().isoformat()
+    print(f"=== Results + settlement for {yesterday} / {today} ===")
     fixtures.sync_fixtures()   # refresh to capture final scores
     settle(yesterday)
+    settle(today)              # also settle today's early kickoffs (e.g. 05:00 games)
     print("Settlement complete.")
 
 

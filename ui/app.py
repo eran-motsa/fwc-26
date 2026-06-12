@@ -106,6 +106,26 @@ def _fixtures_placeholder(date_local: str) -> list[dict]:
     ]
 
 
+def _enrich_with_live_results(matches: list[dict], conn) -> list[dict]:
+    """Overlay live DB status/goals onto snapshot data (snapshot may predate kickoff)."""
+    if not matches:
+        return matches
+    ids = [m["fixture_id"] for m in matches]
+    placeholders = ",".join("?" * len(ids))
+    rows = conn.execute(
+        f"SELECT id, status, home_goals, away_goals FROM fixtures WHERE id IN ({placeholders})",
+        ids,
+    ).fetchall()
+    live = {r["id"]: r for r in rows}
+    for m in matches:
+        row = live.get(m["fixture_id"])
+        if row:
+            m["status"] = row["status"]
+            m["home_goals"] = row["home_goals"]
+            m["away_goals"] = row["away_goals"]
+    return matches
+
+
 def _bets_for(date_local: str) -> list[dict]:
     conn = get_db()
     rows = conn.execute(
@@ -134,7 +154,7 @@ def day_view(request: Request, date_local: str):
     groups = compute_group_standings(conn)
     conn.close()
     if snap:
-        matches = snap["matches"]
+        matches = _enrich_with_live_results(snap["matches"], conn)
         tournament = snap.get("tournament", {})
         generated_at = snap.get("generated_at")
     else:
