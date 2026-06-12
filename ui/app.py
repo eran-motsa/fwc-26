@@ -152,7 +152,6 @@ def day_view(request: Request, date_local: str):
     snap = _snapshot(date_local)
     conn = get_db()
     groups = compute_group_standings(conn)
-    conn.close()
     if snap:
         matches = _enrich_with_live_results(snap["matches"], conn)
         tournament = snap.get("tournament", {})
@@ -161,6 +160,7 @@ def day_view(request: Request, date_local: str):
         matches = _fixtures_placeholder(date_local)
         tournament = {}
         generated_at = None
+    conn.close()
     idx = dates.index(date_local) if date_local in dates else -1
     prev_d = dates[idx - 1] if idx > 0 else None
     next_d = dates[idx + 1] if 0 <= idx < len(dates) - 1 else None
