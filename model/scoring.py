@@ -54,7 +54,8 @@ def get_stage_rule(stage_round: str) -> tuple[float, float]:
     return table.get("group stage", (2.0, 1.0))
 
 
-_CONVICTION_THRESHOLD = 0.65  # if market gives one direction >65%, always bet that direction
+_CONVICTION_THRESHOLD = 0.65  # market one-sided → always follow market direction
+_DISAGREEMENT_FLOOR = 0.35   # market direction floor when overriding a disagreeing model
 
 
 def optimal_bet(score_matrix: np.ndarray, fair_home: float, fair_draw: float,
@@ -63,24 +64,35 @@ def optimal_bet(score_matrix: np.ndarray, fair_home: float, fair_draw: float,
                 cp_away: float | None = None) -> dict:
     """Find the exact scoreline maximising expected league points.
 
-    Strategy:
-    - When the market has strong conviction (one direction >65%), always bet
-      that direction — the market consensus of 40+ books is far more reliable
-      than our model for "who wins". The model then picks the best exact
-      scoreline *within* that direction.
-    - When the market is balanced (<65% for any direction), use the full EP
-      formula with market direction probabilities + model exact-score probs.
+    Direction is chosen by this priority:
+    1. Market conviction ≥ 65%  → always follow market direction.
+    2. Model disagrees with market on who wins AND market leader ≥ 35%
+       → follow market direction (model ratings are data-sparse; when they
+          contradict 40+ books, the model is likely wrong).
+    3. Model and market agree, balanced game  → full EP formula picks direction.
+
+    Within the chosen direction the model's score matrix selects the exact
+    scoreline (market does not price individual scorelines).
     """
     n = score_matrix.shape[0]
     p_home = float(np.tril(score_matrix, -1).sum())
     p_draw = float(np.trace(score_matrix))
     p_away = float(np.triu(score_matrix, 1).sum())
+    model_winner = max({"home": p_home, "draw": p_draw, "away": p_away},
+                       key=lambda k: {"home": p_home, "draw": p_draw, "away": p_away}[k])
 
     have_market = cp_home is not None and cp_draw is not None and cp_away is not None
     if have_market:
         p_dir = {"home": cp_home, "draw": cp_draw, "away": cp_away}
-        top_dir = max(p_dir, key=p_dir.get)
-        forced_dir = top_dir if p_dir[top_dir] >= _CONVICTION_THRESHOLD else None
+        market_winner = max(p_dir, key=p_dir.get)
+        market_top_p = p_dir[market_winner]
+
+        if market_top_p >= _CONVICTION_THRESHOLD:
+            forced_dir = market_winner          # rule 1: market very confident
+        elif market_winner != model_winner and market_top_p >= _DISAGREEMENT_FLOOR:
+            forced_dir = market_winner          # rule 2: model contradicts market
+        else:
+            forced_dir = None                   # rule 3: agree + balanced → EP
     else:
         p_dir = {"home": p_home, "draw": p_draw, "away": p_away}
         forced_dir = None
