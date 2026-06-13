@@ -34,7 +34,7 @@ def fit_ratings(matches: list[dict], xi: float = 0.0) -> dict:
     # params: [attack(n), defence(n), home_adv, rho]
     init = np.concatenate([np.zeros(n), np.zeros(n), [0.25], [-0.1]])
     # Bounds keep ratings sane on small samples and rho in its valid small range.
-    bounds = ([(-2.0, 2.0)] * n) + ([(-2.0, 2.0)] * n) + [(0.0, 1.0), (-0.2, 0.2)]
+    bounds = ([(-2.0, 2.0)] * n) + ([(-2.0, 2.0)] * n) + [(0.1, 0.5), (-0.2, 0.2)]
 
     def negloglik(params: np.ndarray) -> float:
         atk = params[:n]

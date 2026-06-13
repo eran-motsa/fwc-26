@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS team_matches (
   goals_for     INTEGER,
   goals_against INTEGER,
   date_utc      TEXT,
-  is_home       INTEGER
+  is_home       INTEGER,
+  UNIQUE(fixture_id, team_id)
 );
 
 CREATE TABLE IF NOT EXISTS injuries (

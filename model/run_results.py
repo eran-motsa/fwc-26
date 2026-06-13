@@ -54,6 +54,36 @@ def settle(date_local: str) -> int:
     return settled
 
 
+def store_wc2026_results() -> int:
+    """Insert finished WC 2026 matches into team_matches so ratings improve each day."""
+    conn = get_db()
+    finished = conn.execute(
+        "SELECT id, home_id, away_id, home_goals, away_goals, date_utc "
+        "FROM fixtures WHERE status='FT' AND home_goals IS NOT NULL "
+        "AND home_id IS NOT NULL AND away_id IS NOT NULL"
+    ).fetchall()
+    n = 0
+    for f in finished:
+        for is_home, team_id, opp_id, gf, ga in [
+            (1, f["home_id"], f["away_id"], f["home_goals"], f["away_goals"]),
+            (0, f["away_id"], f["home_id"], f["away_goals"], f["home_goals"]),
+        ]:
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO team_matches"
+                    "(fixture_id, team_id, opp_id, goals_for, goals_against, date_utc, is_home)"
+                    " VALUES(?,?,?,?,?,?,?)",
+                    (f["id"], team_id, opp_id, gf, ga, f["date_utc"] or "", is_home),
+                )
+                n += conn.execute("SELECT changes()").fetchone()[0]
+            except Exception:
+                pass
+    conn.commit()
+    conn.close()
+    print(f"Stored {n} new WC 2026 match rows in team_matches.")
+    return n
+
+
 def main() -> None:
     require_keys()
     now = datetime.now(ZoneInfo(TZ_LOCAL))
@@ -63,6 +93,7 @@ def main() -> None:
     fixtures.sync_fixtures()   # refresh to capture final scores
     settle(yesterday)
     settle(today)              # also settle today's early kickoffs (e.g. 05:00 games)
+    store_wc2026_results()     # feed finished WC 2026 games into ratings training data
     print("Settlement complete.")
 
 
