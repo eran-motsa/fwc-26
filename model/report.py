@@ -189,7 +189,9 @@ def build_day(date_local: str) -> dict:
             bonus, mult = get_stage_rule(fx["round"])
             mat = np.array(json.loads(pred["score_matrix_json"]))
             rec = optimal_bet(mat, cons["fair_home"], cons["fair_draw"],
-                              cons["fair_away"], bonus, mult)
+                              cons["fair_away"], bonus, mult,
+                              cp_home=cons["cp_home"], cp_draw=cons["cp_draw"],
+                              cp_away=cons["cp_away"])
             rec["stage_bonus"] = bonus
             rec["odds_multiplier"] = mult
             block["recommended_bet"] = rec

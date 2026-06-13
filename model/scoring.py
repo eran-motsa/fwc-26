@@ -55,14 +55,26 @@ def get_stage_rule(stage_round: str) -> tuple[float, float]:
 
 
 def optimal_bet(score_matrix: np.ndarray, fair_home: float, fair_draw: float,
-                fair_away: float, exact_bonus: float, mult: float) -> dict:
-    """Find the exact scoreline maximising expected league points."""
+                fair_away: float, exact_bonus: float, mult: float,
+                cp_home: float | None = None, cp_draw: float | None = None,
+                cp_away: float | None = None) -> dict:
+    """Find the exact scoreline maximising expected league points.
+
+    Direction probability uses market consensus (cp_*) when available — the
+    collective 40+ bookmakers are more reliable than our sparse model for
+    "who wins". The model's score matrix is used for exact-score selection,
+    which the market does not price.
+    """
     n = score_matrix.shape[0]
-    # P(direction) under the model
+    # Model direction probs (kept for value-edge display; not used in EP calc)
     p_home = float(np.tril(score_matrix, -1).sum())
     p_draw = float(np.trace(score_matrix))
     p_away = float(np.triu(score_matrix, 1).sum())
-    p_dir = {"home": p_home, "draw": p_draw, "away": p_away}
+    # Direction probs for EP: prefer market; fall back to model if no odds data
+    if cp_home is not None and cp_draw is not None and cp_away is not None:
+        p_dir = {"home": cp_home, "draw": cp_draw, "away": cp_away}
+    else:
+        p_dir = {"home": p_home, "draw": p_draw, "away": p_away}
     odds_dir = {"home": fair_home, "draw": fair_draw, "away": fair_away}
 
     best = None
