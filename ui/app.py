@@ -24,6 +24,7 @@ from fastapi.templating import Jinja2Templates
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import TZ_LOCAL, get_db  # noqa: E402
 from model.report import compute_group_standings  # noqa: E402
+from model.scoring import get_stage_rule, score_bet  # noqa: E402
 from model.tournament import golden_boot, simulate_winner  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
@@ -211,6 +212,30 @@ def add_bet(
          datetime.now(ZoneInfo(TZ_LOCAL)).isoformat()),
     )
     conn.commit()
+    # Immediately settle if the fixture is already finished
+    fx = conn.execute(
+        "SELECT status, home_goals, away_goals, round FROM fixtures WHERE id=?",
+        (fixture_id,),
+    ).fetchone()
+    if fx and fx["status"] == "FT" and fx["home_goals"] is not None:
+        bet_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        cons = conn.execute(
+            "SELECT fair_home, fair_draw, fair_away FROM odds_consensus WHERE fixture_id=?",
+            (fixture_id,),
+        ).fetchone()
+        if cons:
+            bonus, mult = get_stage_rule(fx["round"])
+            pts, label = score_bet(
+                predicted_home, predicted_away,
+                fx["home_goals"], fx["away_goals"],
+                cons["fair_home"], cons["fair_draw"], cons["fair_away"],
+                bonus, mult,
+            )
+            conn.execute(
+                "UPDATE bets SET result=?, points_awarded=? WHERE id=?",
+                (label, pts, bet_id),
+            )
+            conn.commit()
     conn.close()
     return RedirectResponse(url=f"/day/{date_local}", status_code=303)
 
